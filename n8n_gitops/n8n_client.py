@@ -222,3 +222,35 @@ class N8nClient:
             f"/api/v1/workflows/{workflow_id}",
             json_data={"active": False},
         )
+
+    def archive_workflow(self, workflow_id: str) -> None:
+        """Archive a workflow.
+
+        Workflows must be archived before they can be deleted.
+
+        Args:
+            workflow_id: Workflow ID
+
+        Raises:
+            APIError: If request fails
+        """
+        self._request(
+            "PUT",
+            f"/api/v1/workflows/{workflow_id}/archive",
+        )
+
+    def delete_workflow(self, workflow_id: str) -> None:
+        """Delete an archived workflow.
+
+        Note: Workflow must be archived first using archive_workflow().
+
+        Args:
+            workflow_id: Workflow ID
+
+        Raises:
+            APIError: If request fails
+        """
+        self._request(
+            "DELETE",
+            f"/api/v1/workflows/{workflow_id}",
+        )

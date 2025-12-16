@@ -56,12 +56,17 @@ export N8N_API_KEY=your-api-key-here
 ### 3. Export existing workflows
 
 ```bash
+# Export workflows with inline code
 n8n-gitops export --all
+
+# Export workflows and externalize code to separate files
+n8n-gitops export --all --externalize-code
 ```
 
 This creates:
 - JSON files in `n8n/workflows/`
 - Manifest entries in `n8n/manifests/workflows.yaml`
+- When using `--externalize-code`: Script files in `n8n/scripts/` with include directives
 
 ### 4. Commit to Git
 
@@ -107,12 +112,27 @@ Export workflows from your n8n instance:
 # Export all workflows
 n8n-gitops export --all
 
+# Export all workflows with code externalization
+n8n-gitops export --all --externalize-code
+
 # Export specific workflows
 n8n-gitops export --names "Workflow A,Workflow B"
 
 # Export workflows listed in manifest
 n8n-gitops export --from-manifest
+
+# Export with code externalization
+# Extracts pythonCode, jsCode, and other code fields to separate files
+# Replaces inline code with @@n8n-gitops:include directives with checksums
+n8n-gitops export --all --externalize-code
 ```
+
+**Code Externalization**: When using `--externalize-code`, the export command will:
+- Detect inline code in workflow nodes (`pythonCode`, `jsCode`, `code`, `functionCode`)
+- Extract the code to separate files in `n8n/scripts/<workflow-name>/`
+- Replace inline code with include directives with SHA256 checksums
+- Automatically use `.py` extension for Python code and `.js` for JavaScript
+- Generate unique filenames based on node names to avoid conflicts
 
 ### validate
 

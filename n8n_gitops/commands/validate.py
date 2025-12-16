@@ -11,6 +11,15 @@ from n8n_gitops.manifest import load_manifest
 from n8n_gitops.normalize import normalize_json
 from n8n_gitops.render import RenderOptions, render_workflow_json
 
+# Fields that should not be in workflow files (n8n-managed)
+N8N_MANAGED_FIELDS = [
+    "id", "createdAt", "updatedAt", "versionId",
+    "shared", "isArchived", "triggerCount",
+]
+
+# Fields that should be removed if null/empty
+NULLABLE_FIELDS = ["meta", "pinData", "staticData"]
+
 
 def run_validate(args: argparse.Namespace) -> None:
     """Run validation on workflows and manifests.
@@ -124,6 +133,29 @@ def run_validate(args: argparse.Namespace) -> None:
                     warnings.append(msg)
         except Exception as e:
             warnings.append(f"Failed to check normalization for {spec.name}: {e}")
+
+        # Check for n8n-managed fields that will cause deployment issues
+        problematic_fields = []
+        for field in N8N_MANAGED_FIELDS:
+            if field in workflow:
+                problematic_fields.append(field)
+
+        # Check for null/empty fields that can cause issues
+        for field in NULLABLE_FIELDS:
+            if field in workflow:
+                value = workflow.get(field)
+                if value is None or value == {}:
+                    problematic_fields.append(f"{field} (null/empty)")
+
+        if problematic_fields:
+            msg = (
+                f"Workflow {spec.name} contains n8n-managed fields that will cause "
+                f"deployment errors: {', '.join(problematic_fields)}. "
+                f"These fields are automatically stripped during deployment, but you should "
+                f"remove them from the workflow file. "
+                f"Re-export with: n8n-gitops export --names \"{spec.name}\" [--externalize-code]"
+            )
+            warnings.append(msg)
 
         print(f"  ✓ Workflow validation passed: {spec.name}")
 

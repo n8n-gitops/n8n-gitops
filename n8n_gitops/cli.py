@@ -92,6 +92,11 @@ def main() -> None:
         help="Export only workflows listed in manifest",
     )
     export_parser.add_argument(
+        "--externalize-code",
+        action="store_true",
+        help="Extract inline code to separate script files with include directives",
+    )
+    export_parser.add_argument(
         "--api-url",
         type=str,
         help="n8n API URL (overrides env and .n8n-auth)",
@@ -122,6 +127,16 @@ def main() -> None:
         "--dry-run",
         action="store_true",
         help="Show what would be deployed without making changes",
+    )
+    deploy_parser.add_argument(
+        "--backup",
+        action="store_true",
+        help="Backup old workflow by renaming it with [BKP timestamp] before replacing",
+    )
+    deploy_parser.add_argument(
+        "--prune",
+        action="store_true",
+        help="Delete workflows in n8n that are not in the manifest",
     )
     deploy_parser.add_argument(
         "--api-url",
