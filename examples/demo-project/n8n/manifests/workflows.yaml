@@ -1,0 +1,9 @@
+workflows:
+  - name: "Example Workflow with Code Include"
+    file: "workflows/example-workflow.json"
+    active: false
+    tags:
+      - example
+      - demo
+    requires_credentials: []
+    requires_env: []
