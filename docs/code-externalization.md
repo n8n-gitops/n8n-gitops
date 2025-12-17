@@ -26,14 +26,14 @@ Store it in separate files:
   "nodes": [
     {
       "parameters": {
-        "pythonCode": "@@n8n-gitops:include scripts/my-workflow/process_data_pythonCode.py"
+        "pythonCode": "@@n8n-gitops:include scripts/my-workflow/process_data.py"
       }
     }
   ]
 }
 ```
 
-**Script file (`n8n/scripts/my-workflow/process_data_pythonCode.py`):**
+**Script file (`n8n/scripts/my-workflow/process_data.py`):**
 ```python
 def process(data):
     return data.upper()
@@ -64,7 +64,7 @@ Where `<path>` is relative to `n8n/` directory and must be under `scripts/`.
 ```
 @@n8n-gitops:include scripts/payments/retry.py
 @@n8n-gitops:include scripts/utilities/format.js
-@@n8n-gitops:include scripts/my-workflow/helper_pythonCode.py
+@@n8n-gitops:include scripts/my-workflow/helper.py
 ```
 
 ### Path Rules
@@ -97,20 +97,20 @@ This will:
 
 Code is extracted from these node parameter fields:
 
-| Field | Extension | Example Node Type |
-|-------|-----------|-------------------|
-| `pythonCode` | `.py` | Code (Python) |
-| `jsCode` | `.js` | Code (JavaScript) |
-| `code` | `.js` | Function, Function Item |
-| `functionCode` | `.js` | Function (legacy) |
+| Field          | Extension | Example Node Type       |
+|----------------|-----------|-------------------------|
+| `pythonCode`   | `.py`     | Code (Python)           |
+| `jsCode`       | `.js`     | Code (JavaScript)       |
+| `code`         | `.js`     | Function, Function Item |
+| `functionCode` | `.js`     | Function (legacy)       |
 
 ### File Naming
 
 Format: `{node-name}_{field-name}.{ext}`
 
 Examples:
-- Node "Process Data" with `pythonCode` → `Process_Data_pythonCode.py`
-- Node "Transform" with `jsCode` → `Transform_jsCode.js`
+- Node "Process Data" with `pythonCode` → `Process_Data.py`
+- Node "Transform" with `jsCode` → `Transform.js`
 - Node "Calculate-Price" with `code` → `Calculate_Price_code.js`
 
 ## Directory Structure
@@ -123,11 +123,11 @@ my-n8n-project/
 │   │   └── data-sync.json
 │   ├── scripts/
 │   │   ├── payment-processing/
-│   │   │   ├── validate_payment_pythonCode.py
-│   │   │   ├── retry_logic_pythonCode.py
-│   │   │   └── format_response_jsCode.js
+│   │   │   ├── validate_payment.py
+│   │   │   ├── retry_logic.py
+│   │   │   └── format_response.js
 │   │   └── data-sync/
-│   │       └── transform_data_pythonCode.py
+│   │       └── transform_data.py
 │   └── manifests/
 │       └── workflows.yaml
 ```
@@ -189,7 +189,7 @@ n8n-gitops export --externalize-code
 
 ### 2. Edit Script File
 
-Edit `n8n/scripts/payment-processing/validate_payment_pythonCode.py`:
+Edit `n8n/scripts/payment-processing/validate_payment.py`:
 
 ```python
 def validate_payment(amount, currency):
@@ -210,7 +210,7 @@ result = validate_payment(payment["amount"], payment["currency"])
 ### 3. Commit Changes
 
 ```bash
-git add n8n/scripts/payment-processing/validate_payment_pythonCode.py
+git add n8n/scripts/payment-processing/validate_payment.py
 git commit -m "Improve payment validation logic"
 git tag v1.1.0
 ```
@@ -260,21 +260,21 @@ The updated code is automatically injected into the workflow during deployment.
       "name": "Validate Payment",
       "type": "n8n-nodes-base.code",
       "parameters": {
-        "pythonCode": "@@n8n-gitops:include scripts/payment-processing/Validate_Payment_pythonCode.py"
+        "pythonCode": "@@n8n-gitops:include scripts/payment-processing/Validate_Payment.py"
       }
     },
     {
       "name": "Format Response",
       "type": "n8n-nodes-base.code",
       "parameters": {
-        "jsCode": "@@n8n-gitops:include scripts/payment-processing/Format_Response_jsCode.js"
+        "jsCode": "@@n8n-gitops:include scripts/payment-processing/Format_Response.js"
       }
     }
   ]
 }
 ```
 
-**`n8n/scripts/payment-processing/Validate_Payment_pythonCode.py`:**
+**`n8n/scripts/payment-processing/Validate_Payment.py`:**
 ```python
 def validate(amount):
     if amount <= 0:
@@ -284,7 +284,7 @@ def validate(amount):
 result = validate(items[0].json.amount)
 ```
 
-**`n8n/scripts/payment-processing/Format_Response_jsCode.js`:**
+**`n8n/scripts/payment-processing/Format_Response.js`:**
 ```javascript
 const format = (data) => {
   return { status: 'ok', data };
@@ -348,10 +348,10 @@ You can test extracted scripts with standard Python/JavaScript tools:
 
 ```bash
 # Python
-python3 n8n/scripts/payment/validate_pythonCode.py
+python3 n8n/scripts/payment/validate.py
 
 # JavaScript
-node n8n/scripts/payment/format_jsCode.js
+node n8n/scripts/payment/format.js
 ```
 
 ## Validation

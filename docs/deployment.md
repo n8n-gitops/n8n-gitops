@@ -192,7 +192,7 @@ Found 1 remote workflow(s)
 Deployment plan:
   + CREATE: New Payment Workflow
   ⟳ REPLACE: Existing Data Sync
-      ✓ Include: scripts/Existing_Data_Sync/process_pythonCode.py
+      ✓ Include: scripts/Existing_Data_Sync/process.py
 
 Executing deployment...
   Creating: New Payment Workflow...

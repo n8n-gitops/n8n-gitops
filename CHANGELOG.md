@@ -63,7 +63,7 @@ n8n-gitops export --all --externalize-code
 
    # After (include directive)
    "parameters": {
-     "jsCode": "@@n8n-gitops:include scripts/MyWorkflow/Node_jsCode.js sha256=abc123..."
+     "jsCode": "@@n8n-gitops:include scripts/MyWorkflow/Node.js"
    }
    ```
 
@@ -71,7 +71,7 @@ n8n-gitops export --all --externalize-code
    ```
    n8n/scripts/
    └── MyWorkflow/
-       └── Node_jsCode.js  # Contains: console.log('hello');
+       └── Node.js  # Contains: console.log('hello');
    ```
 
 3. **Deploy**: Existing render engine automatically handles includes:

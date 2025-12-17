@@ -6,6 +6,7 @@ GitOps CLI for n8n Community Edition - Manage your n8n workflows as code with Gi
 
 - 🔄 **Mirror Mode Export**: Always keeps local repository in perfect sync with n8n
 - 📦 **Code Externalization**: Store Python/JavaScript code in separate files
+- 🔑 **Credential Documentation**: Auto-generate documentation of workflow credential dependencies
 - 🏷️ **Git-Based Deployment**: Deploy specific tags/branches/commits
 - ✅ **Validation**: Validate workflows and manifests before deployment
 - 🔌 **Active State Management**: Control workflow activation via API endpoints
@@ -155,6 +156,7 @@ my-n8n-project/
 │   │   └── my-workflow/
 │   │       ├── process.py
 │   │       └── transform.js
+│   ├── credentials.yaml     # Credential documentation (auto-generated)
 │   └── manifests/
 │       ├── workflows.yaml   # Workflow manifest
 │       └── env.schema.json  # Environment schema

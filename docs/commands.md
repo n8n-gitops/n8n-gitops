@@ -248,7 +248,7 @@ Loaded manifest: 2 workflow(s)
 
 Validating workflows...
   ✓ Payment Processing
-      ✓ Include: scripts/Payment_Processing/validate_pythonCode.py
+      ✓ Include: scripts/Payment_Processing/validate.py
   ✓ Data Sync
 
 ✓ Validation successful!

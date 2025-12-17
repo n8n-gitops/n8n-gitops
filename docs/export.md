@@ -57,6 +57,7 @@ n8n/
 ├── workflows/
 │   ├── workflow1.json
 │   └── workflow2.json
+├── credentials.yaml
 └── manifests/
     └── workflows.yaml
 ```
@@ -77,10 +78,11 @@ n8n/
 │   └── workflow2.json
 ├── scripts/
 │   ├── workflow1/
-│   │   ├── process_data_pythonCode.py
-│   │   └── transform_jsCode.js
+│   │   ├── process_data.py
+│   │   └── transform.js
 │   └── workflow2/
-│       └── helper_pythonCode.py
+│       └── helper.py
+├── credentials.yaml
 └── manifests/
     └── workflows.yaml
 ```
@@ -145,6 +147,52 @@ workflows:
     tags: []
 ```
 
+### Credentials Documentation
+
+The export command automatically generates `n8n/credentials.yaml` to document which credentials are used by your workflows. This file is **informational only** and helps you understand credential dependencies across your workflows.
+
+**What's included:**
+- Credential type (e.g., `postgres`, `slack`, `httpHeaderAuth`)
+- Credential name (as configured in n8n)
+- List of workflows using each credential
+
+**Example:**
+```yaml
+postgres:
+  - name: Production DB
+    workflows:
+      - Data Sync
+      - Payment Processing
+  - name: Analytics DB
+    workflows:
+      - Reporting Workflow
+slack:
+  - name: Team Notifications
+    workflows:
+      - Alert System
+      - Status Updates
+httpHeaderAuth:
+  - name: External API Key
+    workflows:
+      - Data Import
+```
+
+**Important notes:**
+- This file is **documentation only** and is not used during deployment
+- Credentials themselves (API keys, passwords, etc.) are **never exported**
+- Credentials must be manually configured in each n8n instance
+- The file is regenerated on each export based on workflow analysis
+
+**File location:**
+```
+n8n/
+├── credentials.yaml  ← Generated credential documentation
+├── workflows/
+│   └── *.json
+└── manifests/
+    └── workflows.yaml
+```
+
 ### Script Files (with --externalize-code)
 
 Code is extracted from these node fields:
@@ -154,8 +202,8 @@ Code is extracted from these node fields:
 - `functionCode` → `.js` files
 
 Script file naming:
-- Format: `{node-name}_{field-name}.{ext}`
-- Example: `Process_Data_pythonCode.py`
+- Format: `{node-name}.{ext}`
+- Example: `Process_Data.py`
 - Saved in: `n8n/scripts/{workflow-name}/`
 
 ## Mirror Mode Behavior
@@ -195,11 +243,11 @@ Script files are always overwritten on re-export (no `_1`, `_2` suffixes):
 ```bash
 # First export
 n8n-gitops export --externalize-code
-# Creates: Process_Data_pythonCode.py
+# Creates: Process_Data.py
 
 # Modify code in n8n, then re-export
 n8n-gitops export --externalize-code
-# Overwrites: Process_Data_pythonCode.py (no Process_Data_pythonCode_1.py)
+# Overwrites: Process_Data.py (no Process_Data_1.py)
 ```
 
 ## Output Example
@@ -216,8 +264,8 @@ Code externalization: ENABLED
 
   Exporting: Payment Processing
     ✓ Externalized 2 code block(s)
-      → Externalized pythonCode from node 'Process Payment' to scripts/Payment_Processing/Process_Payment_pythonCode.py
-      → Externalized jsCode from node 'Transform Data' to scripts/Payment_Processing/Transform_Data_jsCode.js
+      → Externalized pythonCode from node 'Process Payment' to scripts/Payment_Processing/Process_Payment.py
+      → Externalized jsCode from node 'Transform Data' to scripts/Payment_Processing/Transform_Data.js
     ✓ Saved to: n8n/workflows/Payment_Processing.json
 
   Exporting: Data Sync
@@ -225,12 +273,11 @@ Code externalization: ENABLED
 
   Exporting: Email Notifications
     ✓ Externalized 1 code block(s)
-      → Externalized pythonCode from node 'Format Email' to scripts/Email_Notifications/Format_Email_pythonCode.py
+      → Externalized pythonCode from node 'Format Email' to scripts/Email_Notifications/Format_Email.py
     ✓ Saved to: n8n/workflows/Email_Notifications.json
 
-Cleaning up local files not in remote...
-  🗑  Deleting local workflow not in remote: Old Workflow
-      → Deleted scripts directory: scripts/Old_Workflow/
+Generating credentials documentation...
+  ✓ Documented 3 credential(s) in n8n/credentials.yaml
 
 Updating manifest...
   ✓ Updated manifest: n8n/manifests/workflows.yaml
