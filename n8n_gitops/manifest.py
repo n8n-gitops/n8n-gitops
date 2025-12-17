@@ -24,6 +24,7 @@ class WorkflowSpec:
 class Manifest:
     """Parsed manifest containing workflow specifications."""
     workflows: list[WorkflowSpec]
+    externalize_code: bool = True
 
 
 def load_manifest(snapshot: Snapshot, n8n_root: str = "n8n") -> Manifest:
@@ -55,6 +56,11 @@ def load_manifest(snapshot: Snapshot, n8n_root: str = "n8n") -> Manifest:
 
     if not isinstance(data, dict):
         raise ManifestError("Manifest root must be a dictionary")
+
+    # Parse externalize_code (optional, default True)
+    externalize_code = data.get("externalize_code", True)
+    if not isinstance(externalize_code, bool):
+        raise ManifestError("'externalize_code' must be a boolean")
 
     # Check for workflows key
     if "workflows" not in data:
@@ -139,4 +145,4 @@ def load_manifest(snapshot: Snapshot, n8n_root: str = "n8n") -> Manifest:
             )
         )
 
-    return Manifest(workflows=workflows)
+    return Manifest(workflows=workflows, externalize_code=externalize_code)

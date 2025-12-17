@@ -77,11 +77,6 @@ def main() -> None:
         help="Export all workflows from n8n instance (mirror mode)",
     )
     export_parser.add_argument(
-        "--externalize-code",
-        action="store_true",
-        help="Extract inline code to separate script files with include directives",
-    )
-    export_parser.add_argument(
         "--api-url",
         type=str,
         help="n8n API URL (overrides env and .n8n-auth)",

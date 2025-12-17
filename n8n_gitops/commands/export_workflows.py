@@ -10,6 +10,8 @@ from typing import Any
 import yaml
 
 from n8n_gitops.config import load_auth
+from n8n_gitops.gitref import WorkingTreeSnapshot
+from n8n_gitops.manifest import load_manifest
 from n8n_gitops.n8n_client import N8nClient
 from n8n_gitops.normalize import normalize_json, strip_volatile_fields
 from n8n_gitops.render import CODE_FIELD_NAMES
@@ -35,6 +37,17 @@ def run_export(args: argparse.Namespace) -> None:
     workflows_dir.mkdir(parents=True, exist_ok=True)
     manifests_dir.mkdir(parents=True, exist_ok=True)
     scripts_dir.mkdir(parents=True, exist_ok=True)
+
+    # Load manifest to get externalize_code setting
+    # If manifest doesn't exist yet, use default (True)
+    externalize_code = True
+    try:
+        snapshot = WorkingTreeSnapshot(repo_root)
+        manifest = load_manifest(snapshot, "n8n")
+        externalize_code = manifest.externalize_code
+    except Exception:
+        # If manifest doesn't exist or can't be loaded, use default
+        externalize_code = True
 
     # Load auth config
     try:
@@ -67,10 +80,20 @@ def run_export(args: argparse.Namespace) -> None:
     workflows_to_export = remote_workflows
 
     print(f"\nExporting {len(workflows_to_export)} workflow(s) (mirror mode)...")
-    if args.externalize_code:
-        print("Code externalization: ENABLED")
+    if externalize_code:
+        print("Code externalization: ENABLED (set in manifest)")
     else:
-        print("Code externalization: DISABLED (use --externalize-code to enable)")
+        print("Code externalization: DISABLED (set in manifest)")
+
+    # Clean workflows directory - delete all JSON files for true mirror mode
+    print("\nCleaning workflows directory...")
+    if workflows_dir.exists():
+        deleted_count = 0
+        for workflow_file in workflows_dir.glob("*.json"):
+            workflow_file.unlink()
+            deleted_count += 1
+        if deleted_count > 0:
+            print(f"  🗑  Deleted {deleted_count} existing workflow file(s)")
 
     # Export each workflow
     exported_specs: list[dict[str, Any]] = []
@@ -110,8 +133,8 @@ def run_export(args: argparse.Namespace) -> None:
             ],
         )
 
-        # Externalize code if requested
-        if args.externalize_code:
+        # Externalize code based on manifest setting
+        if externalize_code:
             workflow_cleaned, externalized_count = _externalize_workflow_code(
                 workflow_cleaned,
                 wf_name,
@@ -147,34 +170,11 @@ def run_export(args: argparse.Namespace) -> None:
             }
         )
 
-    # Clean up local workflows/scripts that don't exist remotely (mirror mode)
-    print("\nCleaning up local files not in remote...")
+    # Clean up script directories based on manifest externalize_code setting
+    print("\nCleaning up script directories...")
     exported_names = {spec["name"] for spec in exported_specs}
-
-    # Clean up workflow files
-    if workflows_dir.exists():
-        for workflow_file in workflows_dir.glob("*.json"):
-            # Try to determine workflow name from file
-            try:
-                workflow_data = json.loads(workflow_file.read_text())
-                local_name = workflow_data.get("name")
-
-                if local_name and local_name not in exported_names:
-                    print(f"  🗑  Deleting local workflow not in remote: {local_name}")
-                    workflow_file.unlink()
-
-                    # Also delete corresponding script directory
-                    safe_name = _sanitize_filename(local_name)
-                    script_dir = scripts_dir / safe_name
-                    if script_dir.exists() and script_dir.is_dir():
-                        shutil.rmtree(script_dir)
-                        print(f"      → Deleted scripts directory: scripts/{safe_name}/")
-            except Exception as e:
-                print(f"  ⚠ Warning: Could not process {workflow_file.name}: {e}")
-
-    # Clean up script directories based on externalize-code flag
     if scripts_dir.exists():
-        if not args.externalize_code:
+        if not externalize_code:
             # If not externalizing code, delete ALL script directories
             # (since inline code means no script files should exist)
             for script_dir in scripts_dir.iterdir():
@@ -204,9 +204,12 @@ def run_export(args: argparse.Namespace) -> None:
         # This ensures deleted workflows are removed from manifest
         existing_specs = exported_specs
 
-        # Write manifest
+        # Write manifest (preserve externalize_code setting)
         manifest_content = yaml.dump(
-            {"workflows": existing_specs},
+            {
+                "externalize_code": externalize_code,
+                "workflows": existing_specs
+            },
             default_flow_style=False,
             sort_keys=False,
         )

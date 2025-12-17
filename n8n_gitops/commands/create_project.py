@@ -42,7 +42,12 @@ N8N_API_KEY=
     (project_path / ".n8n-auth.example").write_text(n8n_auth_example_content)
 
     # Create n8n/manifests/workflows.yaml
-    workflows_yaml_content = """workflows: []
+    workflows_yaml_content = """# Code externalization setting
+# When true, code is extracted to separate files in n8n/scripts/
+# When false, code remains inline in workflow JSON
+externalize_code: true
+
+workflows: []
 """
     (manifests_dir / "workflows.yaml").write_text(workflows_yaml_content)
 
