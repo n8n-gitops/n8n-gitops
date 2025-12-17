@@ -55,6 +55,7 @@ n8n-gitops deploy --git-ref v1.0.0
 - **[Manifest File](docs/manifest.md)** - Workflow configuration format
 - **[n8n Enterprise Git Comparison](docs/vs-n8n-enterprise-git.md)** - Decide between n8n-gitops and Enterprise Git
 - **[Commands Reference](docs/commands.md)** - All CLI commands
+- **[GitOps Principles](docs/gitops.md)** - How n8n-gitops aligns with GitOps principles
 
 ## Key Concepts
 
