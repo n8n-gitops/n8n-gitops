@@ -10,8 +10,6 @@ from typing import Any
 import yaml
 
 from n8n_gitops.config import load_auth
-from n8n_gitops.gitref import WorkingTreeSnapshot
-from n8n_gitops.manifest import load_manifest
 from n8n_gitops.n8n_client import N8nClient
 from n8n_gitops.normalize import normalize_json, strip_volatile_fields
 from n8n_gitops.render import CODE_FIELD_NAMES
@@ -65,43 +63,10 @@ def run_export(args: argparse.Namespace) -> None:
         print("No workflows found to export")
         raise SystemExit(0)
 
-    # Determine which workflows to export
-    workflows_to_export: list[dict[str, Any]] = []
+    # Always export all workflows (mirror mode)
+    workflows_to_export = remote_workflows
 
-    if args.all:
-        workflows_to_export = remote_workflows
-    elif args.names:
-        # Parse comma-separated names
-        requested_names = [n.strip() for n in args.names.split(",")]
-        for wf in remote_workflows:
-            if wf.get("name") in requested_names:
-                workflows_to_export.append(wf)
-        # Check for missing workflows
-        found_names = {wf.get("name") for wf in workflows_to_export}
-        missing = set(requested_names) - found_names
-        if missing:
-            print(f"Warning: Workflows not found: {', '.join(missing)}")
-    elif args.from_manifest:
-        # Load manifest and export only those workflows
-        snapshot = WorkingTreeSnapshot(repo_root)
-        try:
-            manifest = load_manifest(snapshot, "n8n")
-            manifest_names = {spec.name for spec in manifest.workflows}
-            for wf in remote_workflows:
-                if wf.get("name") in manifest_names:
-                    workflows_to_export.append(wf)
-        except Exception as e:
-            print(f"Error loading manifest: {e}")
-            raise SystemExit(1)
-    else:
-        print("Error: Must specify --all, --names, or --from-manifest")
-        raise SystemExit(1)
-
-    if not workflows_to_export:
-        print("No workflows selected for export")
-        raise SystemExit(0)
-
-    print(f"\nExporting {len(workflows_to_export)} workflow(s)...")
+    print(f"\nExporting {len(workflows_to_export)} workflow(s) (mirror mode)...")
     if args.externalize_code:
         print("Code externalization: ENABLED")
     else:
@@ -183,33 +148,41 @@ def run_export(args: argparse.Namespace) -> None:
         )
 
     # Clean up local workflows/scripts that don't exist remotely (mirror mode)
-    if args.all:
-        print("\nCleaning up local files not in remote...")
-        exported_names = {spec["name"] for spec in exported_specs}
+    print("\nCleaning up local files not in remote...")
+    exported_names = {spec["name"] for spec in exported_specs}
 
-        # Clean up workflow files
-        if workflows_dir.exists():
-            for workflow_file in workflows_dir.glob("*.json"):
-                # Try to determine workflow name from file
-                try:
-                    workflow_data = json.loads(workflow_file.read_text())
-                    local_name = workflow_data.get("name")
+    # Clean up workflow files
+    if workflows_dir.exists():
+        for workflow_file in workflows_dir.glob("*.json"):
+            # Try to determine workflow name from file
+            try:
+                workflow_data = json.loads(workflow_file.read_text())
+                local_name = workflow_data.get("name")
 
-                    if local_name and local_name not in exported_names:
-                        print(f"  🗑  Deleting local workflow not in remote: {local_name}")
-                        workflow_file.unlink()
+                if local_name and local_name not in exported_names:
+                    print(f"  🗑  Deleting local workflow not in remote: {local_name}")
+                    workflow_file.unlink()
 
-                        # Also delete corresponding script directory
-                        safe_name = _sanitize_filename(local_name)
-                        script_dir = scripts_dir / safe_name
-                        if script_dir.exists() and script_dir.is_dir():
-                            shutil.rmtree(script_dir)
-                            print(f"      → Deleted scripts directory: scripts/{safe_name}/")
-                except Exception as e:
-                    print(f"  ⚠ Warning: Could not process {workflow_file.name}: {e}")
+                    # Also delete corresponding script directory
+                    safe_name = _sanitize_filename(local_name)
+                    script_dir = scripts_dir / safe_name
+                    if script_dir.exists() and script_dir.is_dir():
+                        shutil.rmtree(script_dir)
+                        print(f"      → Deleted scripts directory: scripts/{safe_name}/")
+            except Exception as e:
+                print(f"  ⚠ Warning: Could not process {workflow_file.name}: {e}")
 
-        # Clean up orphaned script directories (scripts without corresponding workflow)
-        if scripts_dir.exists():
+    # Clean up script directories based on externalize-code flag
+    if scripts_dir.exists():
+        if not args.externalize_code:
+            # If not externalizing code, delete ALL script directories
+            # (since inline code means no script files should exist)
+            for script_dir in scripts_dir.iterdir():
+                if script_dir.is_dir():
+                    print(f"  🗑  Deleting scripts directory (inline code mode): scripts/{script_dir.name}/")
+                    shutil.rmtree(script_dir)
+        else:
+            # If externalizing code, only delete orphaned script directories
             for script_dir in scripts_dir.iterdir():
                 if script_dir.is_dir():
                     # Check if there's a corresponding workflow
@@ -223,11 +196,11 @@ def run_export(args: argparse.Namespace) -> None:
                         print(f"  🗑  Deleting orphaned scripts directory: scripts/{dir_name}/")
                         shutil.rmtree(script_dir)
 
-    # Update manifest if --all mode
-    if args.all and exported_specs:
+    # Update manifest (always in mirror mode)
+    if exported_specs:
         print("\nUpdating manifest...")
 
-        # In --all mode, replace manifest completely with exported workflows (mirror mode)
+        # Replace manifest completely with exported workflows (mirror mode)
         # This ensures deleted workflows are removed from manifest
         existing_specs = exported_specs
 

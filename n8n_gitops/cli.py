@@ -74,22 +74,7 @@ def main() -> None:
     # export command
     export_parser = subparsers.add_parser(
         "export",
-        help="Export workflows from n8n instance",
-    )
-    export_parser.add_argument(
-        "--all",
-        action="store_true",
-        help="Export all workflows",
-    )
-    export_parser.add_argument(
-        "--names",
-        type=str,
-        help="Comma-separated list of workflow names to export",
-    )
-    export_parser.add_argument(
-        "--from-manifest",
-        action="store_true",
-        help="Export only workflows listed in manifest",
+        help="Export all workflows from n8n instance (mirror mode)",
     )
     export_parser.add_argument(
         "--externalize-code",
