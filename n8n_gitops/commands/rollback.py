@@ -2,6 +2,7 @@
 
 import argparse
 
+from n8n_gitops import logger
 from n8n_gitops.commands.deploy import run_deploy
 
 
@@ -18,11 +19,10 @@ def run_rollback(args: argparse.Namespace) -> None:
     """
     # Rollback is just deploy with a required git-ref
     if not args.git_ref:
-        print("Error: --git-ref is required for rollback")
-        raise SystemExit(1)
+        logger.critical("Error: --git-ref is required for rollback")
 
-    print(f"Rolling back to git ref: {args.git_ref}")
-    print()
+    logger.info(f"Rolling back to git ref: {args.git_ref}")
+    logger.info("")
 
     # Delegate to deploy
     run_deploy(args)

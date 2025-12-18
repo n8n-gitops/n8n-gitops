@@ -7,6 +7,7 @@ from typing import Any
 
 from datetime import datetime
 
+from n8n_gitops import logger
 from n8n_gitops.config import load_auth
 from n8n_gitops.exceptions import ManifestError, RenderError
 from n8n_gitops.gitref import create_snapshot
@@ -31,14 +32,14 @@ def _sync_tags(
         - updated_tags_mapping: Updated tag ID to name mapping (with new IDs for created tags)
         - tags_were_created: True if any tags were created (manifest needs updating)
     """
-    print("\nSynchronizing tags...")
+    logger.info("\nSynchronizing tags...")
 
     # Fetch existing tags from n8n
     try:
         remote_tags = client.list_tags()
-        print(f"Found {len(remote_tags)} remote tag(s)")
+        logger.info(f"Found {len(remote_tags)} remote tag(s)")
     except Exception as e:
-        print(f"  ⚠ Warning: Could not fetch tags from n8n: {e}")
+        logger.warning(f"  ⚠ Warning: Could not fetch tags from n8n: {e}")
         return manifest_tags, False
 
     # Build remote tag mappings
@@ -63,32 +64,32 @@ def _sync_tags(
             remote_name = remote_tags_by_id[tag_id]
             if remote_name != tag_name:
                 # Name is different, update it
-                print(f"  🔄 Updating tag '{tag_id}': '{remote_name}' → '{tag_name}'")
+                logger.info(f"  🔄 Updating tag '{tag_id}': '{remote_name}' → '{tag_name}'")
                 try:
                     client.update_tag(tag_id, tag_name)
-                    print(f"    ✓ Updated")
+                    logger.info(f"    ✓ Updated")
                 except Exception as e:
-                    print(f"    ✗ Failed to update tag: {e}")
+                    logger.error(f"    ✗ Failed to update tag: {e}")
             else:
                 # Name matches, nothing to do
-                print(f"  ✓ Tag '{tag_name}' (ID: {tag_id}) already up to date")
+                logger.info(f"  ✓ Tag '{tag_name}' (ID: {tag_id}) already up to date")
         else:
             # Tag ID doesn't exist in n8n, create new tag
-            print(f"  ➕ Creating tag '{tag_name}' (manifest ID '{tag_id}' not found in n8n)")
+            logger.info(f"  ➕ Creating tag '{tag_name}' (manifest ID '{tag_id}' not found in n8n)")
             try:
                 created_tag = client.create_tag(tag_name)
                 new_tag_id = created_tag.get("id")
 
                 if new_tag_id:
-                    print(f"    ✓ Created with new ID: {new_tag_id}")
+                    logger.info(f"    ✓ Created with new ID: {new_tag_id}")
                     # Update the mapping with the new ID
                     updated_tags.pop(tag_id)  # Remove old ID
                     updated_tags[str(new_tag_id)] = tag_name
                     tags_were_created = True
                 else:
-                    print(f"    ✗ Created tag but no ID returned")
+                    logger.error(f"    ✗ Created tag but no ID returned")
             except Exception as e:
-                print(f"    ✗ Failed to create tag: {e}")
+                logger.error(f"    ✗ Failed to create tag: {e}")
 
     return updated_tags, tags_were_created
 
@@ -153,25 +154,23 @@ def run_deploy(args: argparse.Namespace) -> None:
     try:
         auth = load_auth(repo_root, args)
     except Exception as e:
-        print(f"Error: {e}")
-        raise SystemExit(1)
+        logger.critical(f"Error: {e}")
 
     # Create snapshot
     snapshot = create_snapshot(repo_root, args.git_ref)
 
-    print(f"Deploying workflows from {repo_root}")
+    logger.info(f"Deploying workflows from {repo_root}")
     if args.git_ref:
-        print(f"Using git ref: {args.git_ref}")
-    print(f"Target: {auth.api_url}")
-    print()
+        logger.info(f"Using git ref: {args.git_ref}")
+    logger.info(f"Target: {auth.api_url}")
+    logger.info("")
 
     # Load manifest
     try:
         manifest = load_manifest(snapshot, n8n_root)
-        print(f"Loaded manifest: {len(manifest.workflows)} workflow(s)")
+        logger.info(f"Loaded manifest: {len(manifest.workflows)} workflow(s)")
     except ManifestError as e:
-        print(f"Error loading manifest: {e}")
-        raise SystemExit(1)
+        logger.critical(f"Error loading manifest: {e}")
 
     # Initialize client
     client = N8nClient(auth.api_url, auth.api_key)
@@ -198,7 +197,7 @@ def run_deploy(args: argparse.Namespace) -> None:
 
         # Update tag IDs in workflow specs
         if id_mapping:
-            print(f"\n  Updating tag references in {len(manifest.workflows)} workflow(s)...")
+            logger.info(f"\n  Updating tag references in {len(manifest.workflows)} workflow(s)...")
             for spec in manifest.workflows:
                 updated_tag_ids = []
                 for tag_id in spec.tags:
@@ -210,17 +209,16 @@ def run_deploy(args: argparse.Namespace) -> None:
         # Update manifest tags mapping
         manifest.tags = updated_tags
 
-        print("\n⚠ Tags were created with new IDs - manifest needs updating")
-        print("  Run 'n8n-gitops export' to update the manifest with new tag IDs")
+        logger.warning("\n⚠ Tags were created with new IDs - manifest needs updating")
+        logger.warning("  Run 'n8n-gitops export' to update the manifest with new tag IDs")
 
     # Fetch remote workflows
-    print("\nFetching remote workflows...")
+    logger.info("\nFetching remote workflows...")
     try:
         remote_workflows = client.list_workflows()
-        print(f"Found {len(remote_workflows)} remote workflow(s)")
+        logger.info(f"Found {len(remote_workflows)} remote workflow(s)")
     except Exception as e:
-        print(f"Error fetching remote workflows: {e}")
-        raise SystemExit(1)
+        logger.critical(f"Error fetching remote workflows: {e}")
 
     # Create name -> id mapping
     name_to_id: dict[str, str] = {}
@@ -241,8 +239,7 @@ def run_deploy(args: argparse.Namespace) -> None:
             workflow_json = snapshot.read_text(workflow_path)
             workflow = json.loads(workflow_json)
         except Exception as e:
-            print(f"Error loading workflow {spec.name}: {e}")
-            raise SystemExit(1)
+            logger.critical(f"Error loading workflow {spec.name}: {e}")
 
         # Render with includes
         render_options = RenderOptions(
@@ -261,8 +258,7 @@ def run_deploy(args: argparse.Namespace) -> None:
                 options=render_options,
             )
         except RenderError as e:
-            print(f"Error rendering workflow {spec.name}: {e}")
-            raise SystemExit(1)
+            logger.critical(f"Error rendering workflow {spec.name}: {e}")
 
         # Ensure name matches manifest
         rendered["name"] = spec.name
@@ -295,34 +291,34 @@ def run_deploy(args: argparse.Namespace) -> None:
                 workflows_to_prune.append(wf)
 
     # Print plan
-    print("\nDeployment plan:")
+    logger.info("\nDeployment plan:")
     for item in plan:
         spec = item["spec"]
         action = item["action"]
         if action == "create":
-            print(f"  + CREATE: {spec.name}")
+            logger.info(f"  + CREATE: {spec.name}")
         elif action == "replace":
             if args.backup:
-                print(f"  ⟳ REPLACE (with backup): {spec.name}")
+                logger.info(f"  ⟳ REPLACE (with backup): {spec.name}")
             else:
-                print(f"  ⟳ REPLACE: {spec.name}")
+                logger.info(f"  ⟳ REPLACE: {spec.name}")
 
         for report in item["reports"]:
             if report.status == "included":
-                print(f"      ✓ Include: {report.include_path}")
+                logger.info(f"      ✓ Include: {report.include_path}")
 
     if workflows_to_prune:
-        print(f"\n  🗑  PRUNE: {len(workflows_to_prune)} workflow(s) not in manifest:")
+        logger.info(f"\n  🗑  PRUNE: {len(workflows_to_prune)} workflow(s) not in manifest:")
         for wf in workflows_to_prune:
-            print(f"      - {wf.get('name')}")
+            logger.info(f"      - {wf.get('name')}")
 
     # Dry run check
     if args.dry_run:
-        print("\n[DRY RUN] No changes made")
+        logger.info("\n[DRY RUN] No changes made")
         raise SystemExit(0)
 
     # Execute deployment
-    print("\nExecuting deployment...")
+    logger.info("\nExecuting deployment...")
     for item in plan:
         spec = item["spec"]
         workflow = item["workflow"]
@@ -334,89 +330,89 @@ def run_deploy(args: argparse.Namespace) -> None:
             api_workflow = _prepare_workflow_for_api(workflow)
 
             if action == "create":
-                print(f"  Creating: {spec.name}...")
+                logger.info(f"  Creating: {spec.name}...")
                 result = client.create_workflow(api_workflow)
                 workflow_id = result.get("id")
-                print(f"    ✓ Created with ID: {workflow_id}")
+                logger.info(f"    ✓ Created with ID: {workflow_id}")
 
             elif action == "replace":
                 # Replace mode: delete old workflow and create new one
-                print(f"  Replacing: {spec.name}...")
+                logger.info(f"  Replacing: {spec.name}...")
 
                 # Backup old workflow if requested
                 if args.backup:
                     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     backup_name = f"[BKP {timestamp}] {spec.name}"
-                    print(f"    Backing up old workflow as: {backup_name}")
+                    logger.info(f"    Backing up old workflow as: {backup_name}")
 
                     # Rename old workflow
                     old_workflow = client.get_workflow(workflow_id)
                     old_workflow["name"] = backup_name
                     old_workflow_cleaned = _prepare_workflow_for_api(old_workflow)
                     client.update_workflow(workflow_id, old_workflow_cleaned)
-                    print(f"    ✓ Backup created")
+                    logger.info(f"    ✓ Backup created")
 
                     # Now create new workflow with original name
-                    print(f"    Creating new workflow...")
+                    logger.info(f"    Creating new workflow...")
                     result = client.create_workflow(api_workflow)
                     workflow_id = result.get("id")
-                    print(f"    ✓ Created with ID: {workflow_id}")
+                    logger.info(f"    ✓ Created with ID: {workflow_id}")
                 else:
                     # Delete old workflow and create new one
-                    print(f"    Deleting old workflow...")
+                    logger.info(f"    Deleting old workflow...")
                     try:
                         client.delete_workflow(workflow_id)
-                        print(f"    ✓ Old workflow deleted")
+                        logger.info(f"    ✓ Old workflow deleted")
                     except Exception as e:
-                        print(f"    ⚠ Could not delete old workflow: {e}")
-                        print(f"    → Creating new workflow anyway...")
+                        logger.warning(f"    ⚠ Could not delete old workflow: {e}")
+                        logger.warning(f"    → Creating new workflow anyway...")
 
-                    print(f"    Creating new workflow...")
+                    logger.info(f"    Creating new workflow...")
                     result = client.create_workflow(api_workflow)
                     workflow_id = result.get("id")
-                    print(f"    ✓ Created with ID: {workflow_id}")
+                    logger.info(f"    ✓ Created with ID: {workflow_id}")
 
             # Set active state based on manifest
             if workflow_id:
                 if spec.active:
-                    print(f"    Activating workflow...")
+                    logger.info(f"    Activating workflow...")
                     client.activate_workflow(workflow_id)
-                    print(f"    ✓ Activated")
+                    logger.info(f"    ✓ Activated")
                 else:
-                    print(f"    Deactivating workflow...")
+                    logger.info(f"    Deactivating workflow...")
                     client.deactivate_workflow(workflow_id)
-                    print(f"    ✓ Deactivated")
+                    logger.info(f"    ✓ Deactivated")
 
                 # Update workflow tags
                 if spec.tags:
-                    print(f"    Updating tags ({len(spec.tags)} tag(s))...")
+                    logger.info(f"    Updating tags ({len(spec.tags)} tag(s))...")
                     client.update_workflow_tags(workflow_id, spec.tags)
-                    print(f"    ✓ Tags updated")
+                    logger.info(f"    ✓ Tags updated")
 
         except Exception as e:
-            print(f"    ✗ Error: {e}")
+            logger.error(f"    ✗ Error: {e}")
 
             # Provide helpful suggestions for common errors
             error_str = str(e).lower()
             if "additional properties" in error_str or "validation" in error_str:
-                print(f"\n    💡 Tip: The workflow file may contain n8n-managed fields.")
-                print(f"    Run 'n8n-gitops validate' to check for problematic fields.")
-                print(f"    Re-export the workflow to get a clean version:")
-                print(f"      n8n-gitops export --names \"{spec.name}\" --externalize-code")
+                logger.error(f"\n    💡 Tip: The workflow file may contain n8n-managed fields.")
+                logger.error(f"    Run 'n8n-gitops validate' to check for problematic fields.")
+                logger.error(f"    Re-export the workflow to get a clean version:")
+                logger.error(f"      n8n-gitops export --names \"{spec.name}\" --externalize-code")
 
             raise SystemExit(1)
 
     # Execute prune if requested
     if workflows_to_prune:
-        print(f"\nPruning workflows not in manifest...")
+        logger.info(f"\nPruning workflows not in manifest...")
         for wf in workflows_to_prune:
             wf_id = wf.get("id")
             wf_name = wf.get("name")
             try:
-                print(f"  Deleting: {wf_name}...")
+                logger.info(f"  Deleting: {wf_name}...")
                 client.delete_workflow(wf_id)
-                print(f"    ✓ Deleted")
+                logger.info(f"    ✓ Deleted")
             except Exception as e:
-                print(f"    ✗ Error deleting {wf_name}: {e}")
+                logger.error(f"    ✗ Error deleting {wf_name}: {e}")
 
-    print("\n✓ Deployment successful!")
+    logger.info("\n✓ Deployment successful!")

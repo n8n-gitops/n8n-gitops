@@ -6,6 +6,25 @@ from pathlib import Path
 from typing import Any
 
 from n8n_gitops import __version__
+from n8n_gitops import logger
+
+
+def _add_common_args(parser: argparse.ArgumentParser) -> None:
+    """Add common arguments to a parser.
+
+    Args:
+        parser: The argument parser to add arguments to
+    """
+    parser.add_argument(
+        "--silent",
+        action="store_true",
+        help="Suppress info messages, only show warnings and errors",
+    )
+    parser.add_argument(
+        "--break-on-error",
+        action="store_true",
+        help="Stop execution immediately on first error",
+    )
 
 
 def main() -> None:
@@ -33,6 +52,7 @@ def main() -> None:
         type=str,
         help="Path where the project should be created",
     )
+    _add_common_args(create_parser)
 
     # validate command
     validate_parser = subparsers.add_parser(
@@ -70,6 +90,7 @@ def main() -> None:
         default=".",
         help="Repository root path (default: current directory)",
     )
+    _add_common_args(validate_parser)
 
     # export command
     export_parser = subparsers.add_parser(
@@ -92,6 +113,7 @@ def main() -> None:
         default=".",
         help="Repository root path (default: current directory)",
     )
+    _add_common_args(export_parser)
 
     # deploy command
     deploy_parser = subparsers.add_parser(
@@ -134,6 +156,7 @@ def main() -> None:
         default=".",
         help="Repository root path (default: current directory)",
     )
+    _add_common_args(deploy_parser)
 
     # rollback command
     rollback_parser = subparsers.add_parser(
@@ -167,12 +190,16 @@ def main() -> None:
         default=".",
         help="Repository root path (default: current directory)",
     )
+    _add_common_args(rollback_parser)
 
     args = parser.parse_args()
 
     if not args.command:
         parser.print_help()
         sys.exit(1)
+
+    # Configure logger with CLI flags
+    logger.configure(silent=args.silent, break_on_error=args.break_on_error)
 
     try:
         if args.command == "create-project":

@@ -26,7 +26,7 @@
 
 ```bash
 # Export workflows with code externalization
-n8n-gitops export --all --externalize-code
+n8n-gitops export
 
 # Result:
 # - Inline code extracted to n8n/scripts/<workflow-name>/<node-name>_<field>.ext

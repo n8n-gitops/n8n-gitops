@@ -9,6 +9,7 @@ from typing import Any
 
 import yaml
 
+from n8n_gitops import logger
 from n8n_gitops.config import load_auth
 from n8n_gitops.gitref import WorkingTreeSnapshot
 from n8n_gitops.manifest import load_manifest
@@ -53,22 +54,21 @@ def run_export(args: argparse.Namespace) -> None:
     try:
         auth = load_auth(repo_root, args)
     except Exception as e:
-        print(f"Error: {e}")
-        raise SystemExit(1)
+        logger.critical(f"Error: {e}")
 
-    print(f"Exporting workflows from {auth.api_url}")
-    print(f"Target directory: {workflows_dir}")
-    print()
+    logger.info(f"Exporting workflows from {auth.api_url}")
+    logger.info(f"Target directory: {workflows_dir}")
+    logger.info("")
 
     # Initialize client
     client = N8nClient(auth.api_url, auth.api_key)
 
     # Fetch all tags first
-    print("Fetching tags...")
+    logger.info("Fetching tags...")
     tags_mapping: dict[str, str] = {}  # Maps tag ID to tag name
     try:
         remote_tags = client.list_tags()
-        print(f"Found {len(remote_tags)} tag(s)")
+        logger.info(f"Found {len(remote_tags)} tag(s)")
 
         # Build tags mapping from all tags in n8n
         for tag in remote_tags:
@@ -77,43 +77,42 @@ def run_export(args: argparse.Namespace) -> None:
             if tag_id and tag_name:
                 tags_mapping[str(tag_id)] = str(tag_name)
     except Exception as e:
-        print(f"Warning: Could not fetch tags: {e}")
+        logger.warning(f"Warning: Could not fetch tags: {e}")
         # Continue without tags
 
     # Fetch workflows
-    print("Fetching workflows...")
+    logger.info("Fetching workflows...")
     try:
         remote_workflows = client.list_workflows()
-        print(f"Found {len(remote_workflows)} workflow(s)")
+        logger.info(f"Found {len(remote_workflows)} workflow(s)")
     except Exception as e:
-        print(f"Error fetching workflows: {e}")
-        raise SystemExit(1)
+        logger.critical(f"Error fetching workflows: {e}")
 
     if not remote_workflows:
-        print("No workflows found to export")
+        logger.info("No workflows found to export")
         raise SystemExit(0)
 
     # Always export all workflows (mirror mode)
     workflows_to_export = remote_workflows
 
-    print(f"\nExporting {len(workflows_to_export)} workflow(s) (mirror mode)...")
+    logger.info(f"\nExporting {len(workflows_to_export)} workflow(s) (mirror mode)...")
     if externalize_code:
-        print("Code externalization: ENABLED (set in manifest)")
+        logger.info("Code externalization: ENABLED (set in manifest)")
     else:
-        print("Code externalization: DISABLED (set in manifest)")
+        logger.info("Code externalization: DISABLED (set in manifest)")
 
     # Clean workflows directory - delete all JSON files for true mirror mode
-    print("\nCleaning workflows directory...")
+    logger.info("\nCleaning workflows directory...")
     if workflows_dir.exists():
         deleted_count = 0
         for workflow_file in workflows_dir.glob("*.json"):
             workflow_file.unlink()
             deleted_count += 1
         if deleted_count > 0:
-            print(f"  🗑  Deleted {deleted_count} existing workflow file(s)")
+            logger.info(f"  🗑  Deleted {deleted_count} existing workflow file(s)")
 
     # Clean scripts directory - delete all script directories for fresh export
-    print("Cleaning scripts directory...")
+    logger.info("Cleaning scripts directory...")
     if scripts_dir.exists():
         deleted_count = 0
         for script_dir in scripts_dir.iterdir():
@@ -121,7 +120,7 @@ def run_export(args: argparse.Namespace) -> None:
                 shutil.rmtree(script_dir)
                 deleted_count += 1
         if deleted_count > 0:
-            print(f"  🗑  Deleted {deleted_count} existing script director{'y' if deleted_count == 1 else 'ies'}")
+            logger.info(f"  🗑  Deleted {deleted_count} existing script director{'y' if deleted_count == 1 else 'ies'}")
 
     # Export each workflow
     exported_specs: list[dict[str, Any]] = []
@@ -135,16 +134,16 @@ def run_export(args: argparse.Namespace) -> None:
         wf_name = wf_summary.get("name")
 
         if not wf_id or not wf_name:
-            print(f"  ⚠ Skipping workflow with missing id or name")
+            logger.warning(f"  ⚠ Skipping workflow with missing id or name")
             continue
 
-        print(f"  Exporting: {wf_name}")
+        logger.info(f"  Exporting: {wf_name}")
 
         # Fetch full workflow
         try:
             workflow = client.get_workflow(wf_id)
         except Exception as e:
-            print(f"    ✗ Error fetching workflow: {e}")
+            logger.error(f"    ✗ Error fetching workflow: {e}")
             continue
 
         # Extract credentials from workflow
@@ -191,7 +190,7 @@ def run_export(args: argparse.Namespace) -> None:
             )
             total_externalized += externalized_count
             if externalized_count > 0:
-                print(f"    ✓ Externalized {externalized_count} code block(s)")
+                logger.info(f"    ✓ Externalized {externalized_count} code block(s)")
 
         # Normalize JSON
         normalized_json = normalize_json(workflow_cleaned)
@@ -204,9 +203,9 @@ def run_export(args: argparse.Namespace) -> None:
         # Write file
         try:
             filepath.write_text(normalized_json)
-            print(f"    ✓ Saved to: n8n/workflows/{filename}")
+            logger.info(f"    ✓ Saved to: n8n/workflows/{filename}")
         except Exception as e:
-            print(f"    ✗ Error writing file: {e}")
+            logger.error(f"    ✗ Error writing file: {e}")
             continue
 
         # Extract tag IDs from workflow (tags are already in tags_mapping)
@@ -230,7 +229,7 @@ def run_export(args: argparse.Namespace) -> None:
 
     # Write credentials.yaml
     if credentials_map:
-        print("\nGenerating credentials documentation...")
+        logger.info("\nGenerating credentials documentation...")
         credentials_yaml_path = n8n_root / "credentials.yaml"
 
         # Transform credentials_map to desired YAML structure
@@ -255,13 +254,13 @@ def run_export(args: argparse.Namespace) -> None:
             )
             credentials_yaml_path.write_text(credentials_yaml_content)
             total_creds = sum(len(creds) for creds in credentials_output.values())
-            print(f"  ✓ Documented {total_creds} credential(s) in {credentials_yaml_path.relative_to(repo_root)}")
+            logger.info(f"  ✓ Documented {total_creds} credential(s) in {credentials_yaml_path.relative_to(repo_root)}")
         except Exception as e:
-            print(f"  ✗ Error writing credentials.yaml: {e}")
+            logger.error(f"  ✗ Error writing credentials.yaml: {e}")
 
     # Update manifest (always in mirror mode)
     if exported_specs:
-        print("\nUpdating manifest...")
+        logger.info("\nUpdating manifest...")
 
         # Replace manifest completely with exported workflows (mirror mode)
         # This ensures deleted workflows are removed from manifest
@@ -285,22 +284,22 @@ def run_export(args: argparse.Namespace) -> None:
         )
         try:
             manifest_file.write_text(manifest_content)
-            print(f"  ✓ Updated manifest: {manifest_file.relative_to(repo_root)}")
+            logger.info(f"  ✓ Updated manifest: {manifest_file.relative_to(repo_root)}")
         except Exception as e:
-            print(f"  ✗ Error writing manifest: {e}")
+            logger.error(f"  ✗ Error writing manifest: {e}")
 
-    print(f"\n✓ Export complete! Exported {len(exported_specs)} workflow(s)")
+    logger.info(f"\n✓ Export complete! Exported {len(exported_specs)} workflow(s)")
     if total_externalized > 0:
-        print(f"✓ Externalized {total_externalized} code block(s) to script files")
-    print("\nNext steps:")
-    print("  1. Review the exported workflows")
+        logger.info(f"✓ Externalized {total_externalized} code block(s) to script files")
+    logger.info("\nNext steps:")
+    logger.info("  1. Review the exported workflows")
     if total_externalized > 0:
-        print("  2. Review the externalized scripts in n8n/scripts/")
-        print("  3. git add n8n/")
-        print("  4. git commit -m 'Export workflows from n8n with externalized code'")
+        logger.info("  2. Review the externalized scripts in n8n/scripts/")
+        logger.info("  3. git add n8n/")
+        logger.info("  4. git commit -m 'Export workflows from n8n with externalized code'")
     else:
-        print("  2. git add n8n/")
-        print("  3. git commit -m 'Export workflows from n8n'")
+        logger.info("  2. git add n8n/")
+        logger.info("  3. git commit -m 'Export workflows from n8n'")
 
 
 def _sanitize_filename(name: str) -> str:
@@ -436,6 +435,6 @@ def _externalize_workflow_code(
             parameters[field_name] = include_directive
             externalized_count += 1
 
-            print(f"      → Externalized {field_name} from node '{node_name}' to {relative_path}")
+            logger.info(f"      → Externalized {field_name} from node '{node_name}' to {relative_path}")
 
     return modified, externalized_count

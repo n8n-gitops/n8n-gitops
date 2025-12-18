@@ -4,6 +4,7 @@ import argparse
 import json
 from pathlib import Path
 
+from n8n_gitops import logger
 from n8n_gitops.envschema import validate_env_schema
 from n8n_gitops.exceptions import ManifestError, RenderError, ValidationError
 from n8n_gitops.gitref import create_snapshot
@@ -39,15 +40,15 @@ def run_validate(args: argparse.Namespace) -> None:
     warnings: list[str] = []
     errors: list[str] = []
 
-    print(f"Validating n8n-gitops project at {repo_root}")
+    logger.info(f"Validating n8n-gitops project at {repo_root}")
     if args.git_ref:
-        print(f"Using git ref: {args.git_ref}")
-    print()
+        logger.info(f"Using git ref: {args.git_ref}")
+    logger.info("")
 
     # Load manifest
     try:
         manifest = load_manifest(snapshot, n8n_root)
-        print(f"✓ Manifest loaded: {len(manifest.workflows)} workflow(s)")
+        logger.info(f"✓ Manifest loaded: {len(manifest.workflows)} workflow(s)")
     except ManifestError as e:
         errors.append(f"Manifest error: {e}")
         _print_results(warnings, errors, args.strict)
@@ -56,8 +57,8 @@ def run_validate(args: argparse.Namespace) -> None:
     # Validate each workflow
     for spec in manifest.workflows:
         workflow_path = f"{n8n_root}/{spec.file}"
-        print(f"\nValidating workflow: {spec.name}")
-        print(f"  File: {workflow_path}")
+        logger.info(f"\nValidating workflow: {spec.name}")
+        logger.info(f"  File: {workflow_path}")
 
         # Check if file exists
         if not snapshot.exists(workflow_path):
@@ -95,7 +96,7 @@ def run_validate(args: argparse.Namespace) -> None:
             # Process reports
             for report in reports:
                 if report.status == "included":
-                    print(f"  ✓ Included: {report.include_path} in {report.node_name}")
+                    logger.info(f"  ✓ Included: {report.include_path} in {report.node_name}")
                 elif report.status == "inline_code":
                     msg = f"Inline code in node '{report.node_name}' field '{report.field}'"
                     if args.enforce_no_inline_code:
@@ -157,10 +158,10 @@ def run_validate(args: argparse.Namespace) -> None:
             )
             warnings.append(msg)
 
-        print(f"  ✓ Workflow validation passed: {spec.name}")
+        logger.info(f"  ✓ Workflow validation passed: {spec.name}")
 
     # Validate environment schema
-    print("\nValidating environment schema...")
+    logger.info("\nValidating environment schema...")
     try:
         env_issues = validate_env_schema(snapshot, n8n_root)
         if env_issues:
@@ -170,19 +171,19 @@ def run_validate(args: argparse.Namespace) -> None:
                 else:
                     warnings.append(issue)
         else:
-            print("  ✓ Environment schema validation passed")
+            logger.info("  ✓ Environment schema validation passed")
     except ValidationError as e:
         errors.append(f"Environment schema error: {e}")
 
     # Print results
-    print()
+    logger.info("")
     _print_results(warnings, errors, args.strict)
 
     # Exit with appropriate code
     if errors or (args.strict and warnings):
         raise SystemExit(1)
     else:
-        print("\n✓ Validation successful!")
+        logger.info("\n✓ Validation successful!")
         raise SystemExit(0)
 
 
@@ -195,13 +196,13 @@ def _print_results(warnings: list[str], errors: list[str], strict: bool) -> None
         strict: Whether strict mode is enabled
     """
     if warnings:
-        print("Warnings:")
+        logger.warning("Warnings:")
         for warning in warnings:
-            print(f"  ⚠ {warning}")
+            logger.warning(f"  ⚠ {warning}")
         if strict:
-            print("\n(Warnings treated as errors in strict mode)")
+            logger.warning("\n(Warnings treated as errors in strict mode)")
 
     if errors:
-        print("\nErrors:")
+        logger.error("\nErrors:")
         for error in errors:
-            print(f"  ✗ {error}")
+            logger.error(f"  ✗ {error}")

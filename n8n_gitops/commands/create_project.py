@@ -4,6 +4,8 @@ import argparse
 from pathlib import Path
 from typing import Any
 
+from n8n_gitops import logger
+
 
 def run_create_project(args: argparse.Namespace) -> None:
     """Create a new n8n-gitops project structure.
@@ -76,7 +78,7 @@ This project uses [n8n-gitops](https://github.com/n8n-gitops/n8n-gitops) to mana
 
 2. Export your existing workflows from n8n:
    ```bash
-   n8n-gitops export --all
+   n8n-gitops export
    ```
 
 3. Commit your workflows to git:
@@ -133,9 +135,9 @@ This directive will be replaced with the contents of the file during deployment.
 """
     (project_path / "README.md").write_text(readme_content)
 
-    print(f"Created n8n-gitops project at {project_path}")
-    print("\nNext steps:")
-    print(f"  1. cd {project_path}")
-    print("  2. cp .n8n-auth.example .n8n-auth")
-    print("  3. Edit .n8n-auth with your n8n API credentials")
-    print("  4. Run: n8n-gitops export --all")
+    logger.info(f"Created n8n-gitops project at {project_path}")
+    logger.info("\nNext steps:")
+    logger.info(f"  1. cd {project_path}")
+    logger.info("  2. cp .n8n-auth.example .n8n-auth")
+    logger.info("  3. Edit .n8n-auth with your n8n API credentials")
+    logger.info("  4. Run: n8n-gitops export")
