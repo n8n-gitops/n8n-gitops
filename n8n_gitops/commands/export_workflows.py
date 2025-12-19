@@ -207,22 +207,22 @@ def run_export(args: argparse.Namespace) -> None:
             logger.error(f"    ✗ Error writing file: {e}")
             continue
 
-        # Extract tag IDs from workflow (tags are already in tags_mapping)
+        # Extract tag names from workflow
         workflow_tags = workflow.get("tags", [])
-        tag_ids: list[str] = []
+        tag_names: list[str] = []
 
         for tag in workflow_tags:
             if isinstance(tag, dict):
-                tag_id = tag.get("id")
-                if tag_id:
-                    tag_ids.append(str(tag_id))
+                tag_name = tag.get("name")  # Changed from "id" to "name"
+                if tag_name:
+                    tag_names.append(str(tag_name))
 
         # Add to manifest
         exported_specs.append(
             {
                 "name": wf_name,
                 "active": workflow.get("active", False),
-                "tags": tag_ids,
+                "tags": tag_names,  # Now contains names, not IDs
             }
         )
 
@@ -268,14 +268,15 @@ def run_export(args: argparse.Namespace) -> None:
         # Sort workflows by name for predictable manifest ordering
         existing_specs = sorted(existing_specs, key=lambda w: w["name"])
 
-        # Sort tags by ID for predictable manifest ordering (tag IDs are strings like "I3JPGtR4K4K2vLh")
-        sorted_tags = dict(sorted(tags_mapping.items()))
+        # Use ALL tag names from n8n (not just tags used by workflows)
+        # tags_mapping contains all tags fetched from n8n (ID → name)
+        all_tag_names = sorted(set(tags_mapping.values()))
 
-        # Write manifest (preserve externalize_code setting, include tags mapping)
+        # Write manifest (preserve externalize_code setting, include tags as list)
         manifest_content = yaml.dump(
             {
                 "externalize_code": externalize_code,
-                "tags": sorted_tags,
+                "tags": all_tag_names,  # All tags from n8n, sorted alphabetically
                 "workflows": existing_specs
             },
             default_flow_style=False,

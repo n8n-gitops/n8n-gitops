@@ -309,6 +309,17 @@ class N8nClient:
             return result
         raise APIError(f"Unexpected response type for update_tag: {type(result)}")
 
+    def delete_tag(self, tag_id: str) -> None:
+        """Delete a tag.
+
+        Args:
+            tag_id: Tag ID
+
+        Raises:
+            APIError: If request fails
+        """
+        self._request("DELETE", f"/api/v1/tags/{tag_id}")
+
     def update_workflow_tags(self, workflow_id: str, tag_ids: list[str]) -> None:
         """Update tags assigned to a workflow.
 

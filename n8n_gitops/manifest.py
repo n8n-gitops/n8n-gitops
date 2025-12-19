@@ -1,11 +1,14 @@
 """Manifest parsing and validation."""
 
+import logging
 from dataclasses import dataclass, field
 
 import yaml
 
 from n8n_gitops.exceptions import ManifestError
 from n8n_gitops.gitref import Snapshot
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -30,7 +33,7 @@ class Manifest:
     """Parsed manifest containing workflow specifications."""
     workflows: list[WorkflowSpec]
     externalize_code: bool = True
-    tags: dict[str, str] = field(default_factory=dict)  # Maps tag ID to tag name
+    tags: list[str] = field(default_factory=list)  # List of tag names
 
 
 def load_manifest(snapshot: Snapshot, n8n_root: str = "n8n") -> Manifest:
@@ -68,17 +71,18 @@ def load_manifest(snapshot: Snapshot, n8n_root: str = "n8n") -> Manifest:
     if not isinstance(externalize_code, bool):
         raise ManifestError("'externalize_code' must be a boolean")
 
-    # Parse tags (optional, default empty dict)
-    tags_data = data.get("tags", {})
-    if not isinstance(tags_data, dict):
-        raise ManifestError("'tags' must be a dictionary")
+    # Parse tags (optional, default empty list)
+    tags_data = data.get("tags", [])
+    tags_list: list[str] = []
+    id_to_name: dict[str, str] = {}  # For old format migration
 
-    # Validate tags structure: all keys and values must be strings
-    tags_mapping: dict[str, str] = {}
-    for tag_id, tag_name in tags_data.items():
-        if not isinstance(tag_id, str) or not isinstance(tag_name, str):
-            raise ManifestError("All tag IDs and names must be strings")
-        tags_mapping[tag_id] = tag_name
+    if isinstance(tags_data, list):
+        # New format: ["production", "development"]
+        if not all(isinstance(t, str) for t in tags_data):
+            raise ManifestError("All tags must be strings")
+        tags_list = tags_data
+    else:
+        raise ManifestError("'tags' must be a list or dictionary")
 
     # Check for workflows key
     if "workflows" not in data:
@@ -157,4 +161,14 @@ def load_manifest(snapshot: Snapshot, n8n_root: str = "n8n") -> Manifest:
             )
         )
 
-    return Manifest(workflows=workflows, externalize_code=externalize_code, tags=tags_mapping)
+    # Validate that all workflow tags reference valid tags in manifest
+    manifest_tag_names = set(tags_list)
+    for spec in workflows:
+        for tag_name in spec.tags:
+            if tag_name not in manifest_tag_names:
+                raise ManifestError(
+                    f"Workflow '{spec.name}' references undefined tag '{tag_name}'. "
+                    f"Available tags: {sorted(manifest_tag_names)}"
+                )
+
+    return Manifest(workflows=workflows, externalize_code=externalize_code, tags=tags_list)

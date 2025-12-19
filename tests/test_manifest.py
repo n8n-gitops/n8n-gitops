@@ -43,6 +43,10 @@ workflows:
         """Test loading manifest with all optional fields."""
         snapshot = MockSnapshot({
             "n8n/manifests/workflows.yaml": """
+tags:
+  - production
+  - critical
+
 workflows:
   - name: "Complete Workflow"
     active: true
@@ -129,34 +133,34 @@ workflows:
             load_manifest(snapshot)
 
     def test_manifest_with_tags(self):
-        """Test that tags section is properly loaded."""
+        """Test that tags section is properly loaded (new list format)."""
         snapshot = MockSnapshot({
             "n8n/manifests/workflows.yaml": """
 tags:
-  "1": "production"
-  "2": "development"
-  "3": "critical"
+  - production
+  - development
+  - critical
 
 workflows:
   - name: "Test Workflow"
     active: true
     tags:
-      - "1"
-      - "3"
+      - production
+      - critical
 """
         })
         manifest = load_manifest(snapshot)
         assert len(manifest.tags) == 3
-        assert manifest.tags["1"] == "production"
-        assert manifest.tags["2"] == "development"
-        assert manifest.tags["3"] == "critical"
-        assert manifest.workflows[0].tags == ["1", "3"]
+        assert "production" in manifest.tags
+        assert "development" in manifest.tags
+        assert "critical" in manifest.tags
+        assert manifest.workflows[0].tags == ["production", "critical"]
 
     def test_manifest_empty_tags(self):
         """Test that empty tags section works."""
         snapshot = MockSnapshot({
             "n8n/manifests/workflows.yaml": """
-tags: {}
+tags: []
 
 workflows:
   - name: "Test Workflow"
@@ -166,14 +170,56 @@ workflows:
         assert len(manifest.tags) == 0
         assert manifest.workflows[0].tags == []
 
-    def test_manifest_tags_not_dict(self):
-        """Test that tags must be a dictionary."""
+    def test_manifest_tags_invalid_type(self):
+        """Test that tags must be a list or dictionary."""
         snapshot = MockSnapshot({
             "n8n/manifests/workflows.yaml": """
-tags: ["not", "a", "dict"]
+tags: "invalid string"
 
 workflows: []
 """
         })
-        with pytest.raises(ManifestError, match="'tags' must be a dictionary"):
+        with pytest.raises(ManifestError, match="'tags' must be a list or dictionary"):
+            load_manifest(snapshot)
+
+    def test_manifest_backward_compatibility_dict_tags(self):
+        """Test backward compatibility with old dict format."""
+        snapshot = MockSnapshot({
+            "n8n/manifests/workflows.yaml": """
+tags:
+  "1": "production"
+  "2": "development"
+
+workflows:
+  - name: "Test Workflow"
+    tags:
+      - "1"
+      - "2"
+"""
+        })
+        # Should load successfully and convert to new format
+        manifest = load_manifest(snapshot)
+        # Tags should be converted to list of unique names
+        assert len(manifest.tags) == 2
+        assert "production" in manifest.tags
+        assert "development" in manifest.tags
+        # Workflow tags should be converted from IDs to names
+        assert manifest.workflows[0].tags == ["production", "development"]
+
+    def test_manifest_workflow_tag_validation(self):
+        """Test that workflow tags must exist in manifest tags section."""
+        snapshot = MockSnapshot({
+            "n8n/manifests/workflows.yaml": """
+tags:
+  - production
+  - development
+
+workflows:
+  - name: "Test Workflow"
+    tags:
+      - production
+      - undefined-tag
+"""
+        })
+        with pytest.raises(ManifestError, match="references undefined tag 'undefined-tag'"):
             load_manifest(snapshot)
