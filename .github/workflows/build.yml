@@ -72,3 +72,34 @@ jobs:
         name: n8n-gitops-linux
         path: dist/n8n-gitops
         retention-days: 90
+
+  publish-release:
+    name: Publish to GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+
+    steps:
+    - name: Download Linux binary
+      uses: actions/download-artifact@v4
+      with:
+        name: n8n-gitops-linux
+        path: dist/
+
+    - name: Upload to Release
+      env:
+        GH_TOKEN: ${{ github.token }}
+        GH_REPO: ${{ github.repository }}
+      run: |
+        TAG_NAME=${GITHUB_REF#refs/tags/}
+
+        # Check if release exists
+        if gh release view "$TAG_NAME" >/dev/null 2>&1; then
+          echo "Release $TAG_NAME exists, uploading binary..."
+          gh release upload "$TAG_NAME" dist/n8n-gitops --clobber
+          echo "✅ Binary uploaded to release $TAG_NAME"
+        else
+          echo "⚠️  Release $TAG_NAME does not exist yet. Binary available as workflow artifact."
+        fi
