@@ -1,6 +1,15 @@
 # n8n-gitops
 
-GitOps CLI for n8n Community Edition - Manage your n8n workflows as code with Git version control.
+[![Sponsor](https://img.shields.io/badge/Sponsor-%23ea4aaa?logo=githubsponsors&logoColor=white&labelColor=0d1117)](https://github.com/sponsors/byjg)
+[![Opensource ByJG](https://img.shields.io/badge/opensource-byjg-success.svg)](http://opensource.byjg.com)
+[![Build Status](https://github.com/n8n-gitops/n8n-gitops/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/n8n-gitops/n8n-gitops/actions/workflows/build.yml)
+[![GitHub source](https://img.shields.io/badge/Github-source-informational?logo=github)](https://github.com/n8n-gitops/n8n-gitops/)
+[![GitHub license](https://img.shields.io/github/license/n8n-gitops/n8n-gitops.svg)](https://opensource.byjg.com/opensource/licensing.html)
+[![GitHub release](https://img.shields.io/github/release/n8n-gitops/n8n-gitops.svg)](https://github.com/n8n-gitops/n8n-gitops/releases/)
+
+A GitOps CLI tool for [n8n](https://n8n.io) Community Edition that brings version control and collaborative workflow development to n8n.
+
+**n8n** is a fair-code workflow automation platform (like Zapier/Make.com but self-hosted) that connects 400+ services and apps. n8n-gitops adds the Git integration that's missing from the Community Edition.
 
 ## Features
 
