@@ -8,6 +8,85 @@ import requests
 from n8n_gitops.exceptions import APIError
 
 
+def _is_retryable_status(status_code: int) -> bool:
+    """Check if HTTP status code is retryable.
+
+    Args:
+        status_code: HTTP status code
+
+    Returns:
+        True if status code is retryable (429 or 5xx)
+    """
+    return status_code in (429, 500, 502, 503, 504)
+
+
+def _extract_error_detail(response: requests.Response) -> str:
+    """Extract error details from HTTP response.
+
+    Args:
+        response: HTTP response object
+
+    Returns:
+        Error detail string
+    """
+    try:
+        error_json = response.json()
+        return str(error_json)
+    except Exception:
+        return response.text[:200]
+
+
+def _create_http_error(
+    exception: requests.exceptions.HTTPError,
+    method: str,
+    endpoint: str
+) -> APIError:
+    """Create APIError from HTTPError exception.
+
+    Args:
+        exception: HTTPError exception
+        method: HTTP method
+        endpoint: API endpoint
+
+    Returns:
+        APIError with detailed message
+    """
+    error_detail = _extract_error_detail(exception.response)
+    return APIError(
+        f"API request failed: {method} {endpoint} -> "
+        f"HTTP {exception.response.status_code}: {error_detail}"
+    )
+
+
+def _handle_retryable_status(
+    response: requests.Response,
+    attempt: int,
+    max_retries: int
+) -> bool:
+    """Handle retryable HTTP status codes.
+
+    Args:
+        response: HTTP response object
+        attempt: Current attempt number (0-indexed)
+        max_retries: Maximum number of retries
+
+    Returns:
+        True if should retry, False otherwise
+
+    Raises:
+        requests.exceptions.HTTPError: If last attempt or non-retryable error
+    """
+    if _is_retryable_status(response.status_code):
+        if attempt < max_retries - 1:
+            # Exponential backoff: 1s, 2s, 4s
+            wait_time = 2 ** attempt
+            time.sleep(wait_time)
+            return True
+        # Last attempt, raise error
+        response.raise_for_status()
+    return False
+
+
 class N8nClient:
     """Client for interacting with n8n API."""
 
@@ -39,6 +118,55 @@ class N8nClient:
             }
         )
 
+    def _execute_request(
+        self,
+        method: str,
+        url: str,
+        json_data: dict[str, Any] | None,
+        params: dict[str, Any] | None,
+        attempt: int
+    ) -> dict[str, Any] | list[dict[str, Any]] | None:
+        """Execute a single request attempt.
+
+        Args:
+            method: HTTP method
+            url: Full URL
+            json_data: JSON data for request body
+            params: Query parameters
+            attempt: Current attempt number (0-indexed)
+
+        Returns:
+            Response JSON data if successful, None if should retry
+
+        Raises:
+            APIError: If request fails non-retryably
+        """
+        try:
+            response = self.session.request(
+                method=method,
+                url=url,
+                json=json_data,
+                params=params,
+                timeout=self.timeout,
+            )
+
+            # Handle retryable status codes
+            if _handle_retryable_status(response, attempt, self.max_retries):
+                return None  # Signal to retry
+
+            # Raise for other client/server errors
+            response.raise_for_status()
+
+            # Return JSON response
+            return response.json()
+
+        except requests.exceptions.HTTPError as e:
+            raise _create_http_error(e, method, url)
+        except requests.exceptions.Timeout as e:
+            raise APIError(f"Request timeout: {method} {url} -> {e}")
+        except requests.exceptions.RequestException as e:
+            raise APIError(f"Request error: {method} {url} -> {e}")
+
     def _request(
         self,
         method: str,
@@ -61,61 +189,13 @@ class N8nClient:
             APIError: If request fails after retries
         """
         url = f"{self.api_url}{endpoint}"
-        last_error: Exception | None = None
 
         for attempt in range(self.max_retries):
-            try:
-                response = self.session.request(
-                    method=method,
-                    url=url,
-                    json=json_data,
-                    params=params,
-                    timeout=self.timeout,
-                )
+            result = self._execute_request(method, url, json_data, params, attempt)
+            if result is not None:
+                return result
+            # result is None means we should retry
 
-                # Handle rate limiting and server errors with retry
-                if response.status_code in (429, 500, 502, 503, 504):
-                    if attempt < self.max_retries - 1:
-                        # Exponential backoff: 1s, 2s, 4s
-                        wait_time = 2 ** attempt
-                        time.sleep(wait_time)
-                        continue
-                    # Last attempt, raise error
-                    response.raise_for_status()
-
-                # Raise for other client/server errors
-                response.raise_for_status()
-
-                # Return JSON response
-                return response.json()
-
-            except requests.exceptions.HTTPError as e:
-                # Extract error details from response
-                error_detail = ""
-                try:
-                    error_json = e.response.json()
-                    error_detail = str(error_json)
-                except Exception:
-                    error_detail = e.response.text[:200]
-
-                last_error = APIError(
-                    f"API request failed: {method} {endpoint} -> "
-                    f"HTTP {e.response.status_code}: {error_detail}"
-                )
-
-            except requests.exceptions.Timeout as e:
-                last_error = APIError(f"Request timeout: {method} {endpoint} -> {e}")
-
-            except requests.exceptions.RequestException as e:
-                last_error = APIError(f"Request error: {method} {endpoint} -> {e}")
-
-            # If this wasn't a retryable error, break immediately
-            if not isinstance(last_error, APIError) or attempt == self.max_retries - 1:
-                break
-
-        # If we got here, all retries failed
-        if last_error:
-            raise last_error
         raise APIError(f"Request failed after {self.max_retries} retries")
 
     def list_workflows(self) -> list[dict[str, Any]]:

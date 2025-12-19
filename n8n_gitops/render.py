@@ -108,6 +108,285 @@ def compute_sha256(content: bytes) -> str:
     return hashlib.sha256(content).hexdigest()
 
 
+def _handle_inline_code(
+    node_name: str,
+    node_id: str,
+    field_name: str,
+    options: RenderOptions
+) -> RenderReport:
+    """Handle inline code (not an include directive).
+
+    Args:
+        node_name: Name of the node
+        node_id: ID of the node
+        field_name: Name of the code field
+        options: Render options
+
+    Returns:
+        RenderReport for inline code
+
+    Raises:
+        RenderError: If enforce_no_inline_code is enabled
+    """
+    if options.enforce_no_inline_code:
+        raise RenderError(
+            f"Inline code found in node '{node_name}' field '{field_name}' "
+            f"(enforce_no_inline_code is enabled)"
+        )
+    return RenderReport(
+        node_name=node_name,
+        node_id=node_id,
+        field=field_name,
+        status="inline_code",
+    )
+
+
+def _read_include_file(
+    full_path: str,
+    snapshot: Snapshot,
+    node_name: str,
+    field_name: str
+) -> tuple[bytes, str]:
+    """Read and decode include file.
+
+    Args:
+        full_path: Full path to include file
+        snapshot: Snapshot to read from
+        node_name: Name of the node (for error messages)
+        field_name: Name of the code field (for error messages)
+
+    Returns:
+        Tuple of (file_bytes, file_content)
+
+    Raises:
+        RenderError: If file not found or cannot be read
+    """
+    if not snapshot.exists(full_path):
+        raise RenderError(
+            f"Include file not found: {full_path} "
+            f"(referenced in node '{node_name}' field '{field_name}')"
+        )
+
+    try:
+        file_bytes = snapshot.read_bytes(full_path)
+        file_content = file_bytes.decode("utf-8")
+        return file_bytes, file_content
+    except Exception as e:
+        raise RenderError(f"Failed to read include file {full_path}: {e}")
+
+
+def _validate_checksum(
+    node_name: str,
+    node_id: str,
+    field_name: str,
+    include_path: str,
+    expected_sha256: str | None,
+    actual_sha256: str,
+    options: RenderOptions
+) -> RenderReport | None:
+    """Validate checksum and create report if mismatch.
+
+    Args:
+        node_name: Name of the node
+        node_id: ID of the node
+        field_name: Name of the code field
+        include_path: Path to include file
+        expected_sha256: Expected SHA256 hash (may be None)
+        actual_sha256: Actual SHA256 hash
+        options: Render options
+
+    Returns:
+        RenderReport if checksum mismatch, None otherwise
+
+    Raises:
+        RenderError: If checksum validation fails and enforce_checksum is enabled
+        RenderError: If checksum required but not provided
+    """
+    if expected_sha256:
+        if actual_sha256 != expected_sha256:
+            if options.enforce_checksum:
+                raise RenderError(
+                    f"Checksum mismatch for {include_path} in node '{node_name}': "
+                    f"expected {expected_sha256}, got {actual_sha256}"
+                )
+            return RenderReport(
+                node_name=node_name,
+                node_id=node_id,
+                field=field_name,
+                include_path=include_path,
+                sha256_expected=expected_sha256,
+                sha256_actual=actual_sha256,
+                status="checksum_mismatch",
+            )
+    else:
+        if options.require_checksum:
+            raise RenderError(
+                f"Checksum required but not provided for {include_path} "
+                f"in node '{node_name}' (require_checksum is enabled)"
+            )
+    return None
+
+
+def _process_include_directive(
+    node_name: str,
+    node_id: str,
+    field_name: str,
+    include_path: str,
+    expected_sha256: str | None,
+    snapshot: Snapshot,
+    n8n_root: str,
+    options: RenderOptions
+) -> tuple[str, list[RenderReport]]:
+    """Process include directive and return replacement content.
+
+    Args:
+        node_name: Name of the node
+        node_id: ID of the node
+        field_name: Name of the code field
+        include_path: Path to include file
+        expected_sha256: Expected SHA256 hash (may be None)
+        snapshot: Snapshot to read from
+        n8n_root: Path to n8n directory
+        options: Render options
+
+    Returns:
+        Tuple of (file_content, reports)
+
+    Raises:
+        RenderError: If include processing fails
+    """
+    # Validate path
+    validate_include_path(include_path, n8n_root)
+
+    # Build full path
+    full_path = f"{n8n_root}/{include_path}"
+
+    # Read file
+    file_bytes, file_content = _read_include_file(full_path, snapshot, node_name, field_name)
+
+    # Compute actual hash
+    actual_sha256 = compute_sha256(file_bytes)
+
+    # Validate checksum
+    reports: list[RenderReport] = []
+    checksum_report = _validate_checksum(
+        node_name, node_id, field_name, include_path,
+        expected_sha256, actual_sha256, options
+    )
+    if checksum_report:
+        reports.append(checksum_report)
+
+    # Add success report
+    reports.append(
+        RenderReport(
+            node_name=node_name,
+            node_id=node_id,
+            field=field_name,
+            include_path=include_path,
+            sha256_expected=expected_sha256,
+            sha256_actual=actual_sha256,
+            status="included",
+        )
+    )
+
+    return file_content, reports
+
+
+def _process_code_field(
+    node: dict[str, Any],
+    node_name: str,
+    node_id: str,
+    field_name: str,
+    snapshot: Snapshot,
+    n8n_root: str,
+    options: RenderOptions
+) -> list[RenderReport]:
+    """Process a single code field (either inline or include directive).
+
+    Args:
+        node: Node dictionary
+        node_name: Name of the node
+        node_id: ID of the node
+        field_name: Name of the code field
+        snapshot: Snapshot to read from
+        n8n_root: Path to n8n directory
+        options: Render options
+
+    Returns:
+        List of render reports
+
+    Raises:
+        RenderError: If processing fails
+    """
+    parameters = node.get("parameters", {})
+    if not isinstance(parameters, dict):
+        return []
+
+    if field_name not in parameters:
+        return []
+
+    field_value = parameters[field_name]
+    if not isinstance(field_value, str):
+        return []
+
+    # Try to parse as include directive
+    parsed = parse_include_directive(field_value)
+
+    if parsed is None:
+        # Not an include directive - this is inline code
+        report = _handle_inline_code(node_name, node_id, field_name, options)
+        return [report]
+
+    # Process include directive
+    include_path, expected_sha256 = parsed
+    file_content, reports = _process_include_directive(
+        node_name, node_id, field_name, include_path, expected_sha256,
+        snapshot, n8n_root, options
+    )
+
+    # Replace directive with file content
+    parameters[field_name] = file_content
+
+    return reports
+
+
+def _process_node(
+    node: dict[str, Any],
+    snapshot: Snapshot,
+    n8n_root: str,
+    options: RenderOptions
+) -> list[RenderReport]:
+    """Process all code fields in a node.
+
+    Args:
+        node: Node dictionary
+        snapshot: Snapshot to read from
+        n8n_root: Path to n8n directory
+        options: Render options
+
+    Returns:
+        List of render reports
+
+    Raises:
+        RenderError: If processing fails
+    """
+    if not isinstance(node, dict):
+        return []
+
+    node_name = node.get("name", "<unnamed>")
+    node_id = node.get("id", "<no-id>")
+
+    reports: list[RenderReport] = []
+    for field_name in CODE_FIELD_NAMES:
+        field_reports = _process_code_field(
+            node, node_name, node_id, field_name,
+            snapshot, n8n_root, options
+        )
+        reports.extend(field_reports)
+
+    return reports
+
+
 def render_workflow_json(
     workflow: dict[str, Any],
     snapshot: Snapshot,
@@ -138,121 +417,14 @@ def render_workflow_json(
     import copy
     rendered = copy.deepcopy(workflow)
 
-    reports: list[RenderReport] = []
-
     # Process nodes
     nodes = rendered.get("nodes", [])
     if not isinstance(nodes, list):
-        return rendered, reports
+        return rendered, []
 
+    reports: list[RenderReport] = []
     for node in nodes:
-        if not isinstance(node, dict):
-            continue
-
-        node_name = node.get("name", "<unnamed>")
-        node_id = node.get("id", "<no-id>")
-        parameters = node.get("parameters", {})
-
-        if not isinstance(parameters, dict):
-            continue
-
-        # Check each code field
-        for field_name in CODE_FIELD_NAMES:
-            if field_name not in parameters:
-                continue
-
-            field_value = parameters[field_name]
-            if not isinstance(field_value, str):
-                continue
-
-            # Try to parse as include directive
-            parsed = parse_include_directive(field_value)
-
-            if parsed is None:
-                # Not an include directive - this is inline code
-                if options.enforce_no_inline_code:
-                    raise RenderError(
-                        f"Inline code found in node '{node_name}' field '{field_name}' "
-                        f"(enforce_no_inline_code is enabled)"
-                    )
-                reports.append(
-                    RenderReport(
-                        node_name=node_name,
-                        node_id=node_id,
-                        field=field_name,
-                        status="inline_code",
-                    )
-                )
-                continue
-
-            # Parse include directive
-            include_path, expected_sha256 = parsed
-
-            # Validate path
-            validate_include_path(include_path, n8n_root)
-
-            # Build full path
-            full_path = f"{n8n_root}/{include_path}"
-
-            # Read file
-            if not snapshot.exists(full_path):
-                raise RenderError(
-                    f"Include file not found: {full_path} "
-                    f"(referenced in node '{node_name}' field '{field_name}')"
-                )
-
-            try:
-                file_bytes = snapshot.read_bytes(full_path)
-                file_content = file_bytes.decode("utf-8")
-            except Exception as e:
-                raise RenderError(
-                    f"Failed to read include file {full_path}: {e}"
-                )
-
-            # Compute actual hash
-            actual_sha256 = compute_sha256(file_bytes)
-
-            # Validate checksum
-            if expected_sha256:
-                if actual_sha256 != expected_sha256:
-                    if options.enforce_checksum:
-                        raise RenderError(
-                            f"Checksum mismatch for {full_path} in node '{node_name}': "
-                            f"expected {expected_sha256}, got {actual_sha256}"
-                        )
-                    reports.append(
-                        RenderReport(
-                            node_name=node_name,
-                            node_id=node_id,
-                            field=field_name,
-                            include_path=include_path,
-                            sha256_expected=expected_sha256,
-                            sha256_actual=actual_sha256,
-                            status="checksum_mismatch",
-                        )
-                    )
-                    # Continue with rendering even if checksum doesn't match
-            else:
-                # No checksum provided
-                if options.require_checksum:
-                    raise RenderError(
-                        f"Checksum required but not provided for {full_path} "
-                        f"in node '{node_name}' (require_checksum is enabled)"
-                    )
-
-            # Replace directive with file content
-            parameters[field_name] = file_content
-
-            reports.append(
-                RenderReport(
-                    node_name=node_name,
-                    node_id=node_id,
-                    field=field_name,
-                    include_path=include_path,
-                    sha256_expected=expected_sha256,
-                    sha256_actual=actual_sha256,
-                    status="included",
-                )
-            )
+        node_reports = _process_node(node, snapshot, n8n_root, options)
+        reports.extend(node_reports)
 
     return rendered, reports
