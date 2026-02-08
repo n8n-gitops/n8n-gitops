@@ -92,7 +92,7 @@ git push origin vX.Y.Z
 
 After pushing the tag:
 
-1. Go to [GitHub Actions](../../actions)
+1. Go to [GitHub Actions](https://github.com/n8n-gitops/n8n-gitops/actions)
 2. Wait for the "Build, Lint and Test" workflow to complete
 3. Verify all jobs passed:
    - **test**: Runs tests and linting
@@ -106,7 +106,7 @@ After pushing the tag:
 
 #### Option A: Using GitHub Web Interface
 
-1. Go to [Releases](../../releases)
+1. Go to [Releases](https://github.com/n8n-gitops/n8n-gitops/releases)
 2. Click "Draft a new release"
 3. Choose the tag: `vX.Y.Z`
 4. Set the release title: `vX.Y.Z` or `n8n-gitops vX.Y.Z`
@@ -142,7 +142,7 @@ Each release automatically includes:
 
 After creating the release:
 
-1. Verify the release appears on the [Releases page](../../releases)
+1. Verify the release appears on the [Releases page](https://github.com/n8n-gitops/n8n-gitops/releases)
 2. Test the binary download and execution
 3. Announce the release (if applicable)
 4. Close any related milestone
