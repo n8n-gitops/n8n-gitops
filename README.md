@@ -195,6 +195,21 @@ uv run pytest -v  # with uv
 pytest -v  # with pip
 ```
 
+## Docker (Local Build)
+
+```bash
+docker build -t n8n-gitops:local .
+
+# Recommended: add a shell alias to ~/.bashrc or ~/.zshrc
+alias n8n-gitops-docker='docker run --rm -v "$PWD":/project -w /project -e N8N_API_URL -e N8N_API_KEY n8n-gitops:local'
+
+# Usage (pass any CLI command after the alias)
+n8n-gitops-docker export
+n8n-gitops-docker validate
+n8n-gitops-docker validate --strict
+n8n-gitops-docker deploy --git-ref <ref>
+```
+
 ## Requirements
 
 - Python 3.10+
