@@ -1,4 +1,10 @@
+---
+tags: [docker, devops, cli]
+---
+
 # n8n-gitops
+
+A GitOps CLI tool for [n8n](https://n8n.io) Community Edition that brings version control and collaborative workflow development to n8n.
 
 [![Sponsor](https://img.shields.io/badge/Sponsor-%23ea4aaa?logo=githubsponsors&logoColor=white&labelColor=0d1117)](https://github.com/sponsors/byjg)
 [![Opensource ByJG](https://img.shields.io/badge/opensource-byjg-success.svg)](http://opensource.byjg.com)
@@ -6,8 +12,6 @@
 [![GitHub source](https://img.shields.io/badge/Github-source-informational?logo=github)](https://github.com/n8n-gitops/n8n-gitops/)
 [![GitHub license](https://img.shields.io/github/license/n8n-gitops/n8n-gitops.svg)](https://opensource.byjg.com/opensource/licensing.html)
 [![GitHub release](https://img.shields.io/github/release/n8n-gitops/n8n-gitops.svg)](https://github.com/n8n-gitops/n8n-gitops/releases/)
-
-A GitOps CLI tool for [n8n](https://n8n.io) Community Edition that brings version control and collaborative workflow development to n8n.
 
 **n8n** is a fair-code workflow automation platform (like Zapier/Make.com but self-hosted) that connects 400+ services and apps. n8n-gitops adds the Git integration that's missing from the Community Edition.
 
@@ -21,7 +25,7 @@ A GitOps CLI tool for [n8n](https://n8n.io) Community Edition that brings versio
 - 🔌 **Active State Management**: Control workflow activation via API endpoints
 - 🧹 **Clean Deployments**: Replace workflows with clean state
 
-![Logo](docs/n8n-gitops-256.png)
+![Logo](n8n-gitops-256.png)
 
 ## Quick Start
 
@@ -55,15 +59,15 @@ n8n-gitops deploy --git-ref v1.0.0
 
 ### Core Guides
 
-- **[Getting Started](docs/getting-started.md)** - Installation and quick start
-- **[Authentication](docs/authentication.md)** - Configure API credentials
-- **[Export](docs/export.md)** - Mirror workflows from n8n
-- **[Deployment](docs/deployment.md)** - Deploy workflows to n8n
-- **[Code Externalization](docs/code-externalization.md)** - Store code in separate files
-- **[Manifest File](docs/manifest.md)** - Workflow configuration format
-- **[n8n Enterprise Git Comparison](docs/vs-n8n-enterprise-git.md)** - Decide between n8n-gitops and Enterprise Git
-- **[Commands Reference](docs/commands.md)** - All CLI commands
-- **[GitOps Principles](docs/gitops.md)** - How n8n-gitops aligns with GitOps principles
+- **[Getting Started](getting-started)** - Installation and quick start
+- **[Authentication](authentication)** - Configure API credentials
+- **[Export](export)** - Mirror workflows from n8n
+- **[Deployment](deployment)** - Deploy workflows to n8n
+- **[Code Externalization](code-externalization)** - Store code in separate files
+- **[Manifest File](manifest)** - Workflow configuration format
+- **[n8n Enterprise Git Comparison](vs-n8n-enterprise-git)** - Decide between n8n-gitops and Enterprise Git
+- **[Commands Reference](commands)** - All CLI commands
+- **[GitOps Principles](gitops)** - How n8n-gitops aligns with GitOps principles
 
 ## Key Concepts
 
@@ -135,7 +139,7 @@ n8n-gitops deploy [--git-ref REF] [--dry-run] [--backup] [--prune]
 n8n-gitops rollback --git-ref <ref>
 ```
 
-See [Commands Reference](docs/commands.md) for complete documentation.
+See [Commands Reference](commands) for complete documentation.
 
 ## Example Workflow
 
