@@ -530,6 +530,10 @@ def _prepare_workflow_for_api(workflow: dict[str, Any]) -> dict[str, Any]:
         "pinData",      # Pinned test data (if empty, causes issues)
         "staticData",   # Static data (if null, causes issues)
         "triggerCount",  # Trigger counter
+        "activeVersion",     # Active version (read-only in n8n v2)
+        "activeVersionId",  # Active version ID (n8n v2)
+        "versionCounter",   # Version counter (n8n v2)
+        "description",      # Description (not accepted in POST)
     ]
 
     for field in fields_to_remove:
@@ -543,6 +547,20 @@ def _prepare_workflow_for_api(workflow: dict[str, Any]) -> dict[str, Any]:
         cleaned.pop("pinData", None)
     if cleaned.get("staticData") is None:
         cleaned.pop("staticData", None)
+
+    # Clean settings: remove fields not accepted by the API
+    _ALLOWED_SETTINGS = {
+        "saveExecutionProgress", "saveManualExecutions",
+        "saveDataErrorExecution", "saveDataSuccessExecution",
+        "executionTimeout", "errorWorkflow", "timezone",
+        "executionOrder", "callerPolicy", "callerIds",
+        "timeSavedPerExecution", "availableInMCP",
+    }
+    if "settings" in cleaned and isinstance(cleaned["settings"], dict):
+        cleaned["settings"] = {
+            k: v for k, v in cleaned["settings"].items()
+            if k in _ALLOWED_SETTINGS
+        }
 
     return cleaned
 

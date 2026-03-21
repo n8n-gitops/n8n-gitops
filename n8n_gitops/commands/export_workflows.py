@@ -305,7 +305,8 @@ def _export_single_workflow(
     # Clean workflow
     workflow_cleaned = strip_volatile_fields(
         workflow,
-        fields=["id", "createdAt", "updatedAt", "versionId", "shared", "isArchived", "triggerCount"],
+        fields=["id", "createdAt", "updatedAt", "versionId", "shared", "isArchived",
+                "triggerCount", "activeVersionId", "versionCounter"],
     )
 
     # Externalize code if enabled
