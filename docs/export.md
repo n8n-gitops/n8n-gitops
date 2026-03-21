@@ -140,6 +140,31 @@ httpHeaderAuth:
       - Data Import
 ```
 
+#### Inferred Credentials
+
+When credentials haven't been configured in n8n yet (common with imported template workflows), n8n-gitops infers required credentials from node types and parameters. These appear under a separate `_inferred` section:
+
+```yaml
+_inferred:
+  gmail:
+  - node_type: n8n-nodes-base.gmail
+    source: node_type
+    workflows:
+    - My Workflow
+  facebookGraphApi:
+  - node_type: n8n-nodes-base.httpRequest
+    source: parameter
+    workflows:
+    - Social Media Workflow
+```
+
+Each entry includes:
+- **node_type** - The n8n node type that requires this credential
+- **source** - How the credential was inferred: `parameter` (from `nodeCredentialType`) or `node_type` (from the node type name)
+- **workflows** - Which workflows need this credential
+
+Once you configure the credentials in n8n and re-export, they will move from `_inferred` to the configured section with their actual names.
+
 **Important notes:**
 - This file is **documentation only** and is not used during deployment
 - Credentials themselves (API keys, passwords, etc.) are **never exported**

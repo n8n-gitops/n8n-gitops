@@ -53,7 +53,7 @@ Export all workflows from n8n instance (mirror mode).
 ### Usage
 
 ```bash
-n8n-gitops export [--api-url URL] [--api-key KEY] [--repo-root PATH]
+n8n-gitops export [--api-url URL] [--api-key KEY] [--repo-root PATH] [--insecure]
 ```
 
 ### Options
@@ -61,6 +61,7 @@ n8n-gitops export [--api-url URL] [--api-key KEY] [--repo-root PATH]
 - `--api-url URL` - n8n API URL (overrides env and .n8n-auth)
 - `--api-key KEY` - n8n API key (overrides env and .n8n-auth)
 - `--repo-root PATH` - Repository root path (default: current directory)
+- `--insecure` - Disable SSL certificate verification (for self-signed certificates)
 
 Code externalization is controlled by `externalize_code` in `n8n/manifests/workflows.yaml` (default: `true`).
 
@@ -105,6 +106,7 @@ n8n-gitops deploy [options]
 - `--api-url URL` - n8n API URL (overrides env and .n8n-auth)
 - `--api-key KEY` - n8n API key (overrides env and .n8n-auth)
 - `--repo-root PATH` - Repository root path (default: current directory)
+- `--insecure` - Disable SSL certificate verification (for self-signed certificates)
 
 ### Examples
 
@@ -151,6 +153,7 @@ n8n-gitops rollback --git-ref <ref> [options]
 - `--api-url URL` - n8n API URL (overrides env and .n8n-auth)
 - `--api-key KEY` - n8n API key (overrides env and .n8n-auth)
 - `--repo-root PATH` - Repository root path (default: current directory)
+- `--insecure` - Disable SSL certificate verification (for self-signed certificates)
 
 ### Examples
 

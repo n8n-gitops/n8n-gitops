@@ -590,7 +590,8 @@ def run_deploy(args: argparse.Namespace) -> None:
         logger.critical(f"Error loading manifest: {e}")
 
     # Initialize client
-    client = N8nClient(auth.api_url, auth.api_key)
+    insecure = getattr(args, "insecure", False)
+    client = N8nClient(auth.api_url, auth.api_key, insecure=insecure)
 
     # Synchronize tags (create missing tags, get name→ID mapping)
     tag_name_to_id, remote_tags_by_name = _sync_tags(client, manifest.tags)

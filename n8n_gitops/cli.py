@@ -111,6 +111,11 @@ def main() -> None:
         default=".",
         help="Repository root path (default: current directory)",
     )
+    export_parser.add_argument(
+        "--insecure",
+        action="store_true",
+        help="Disable SSL certificate verification (for self-signed certificates)",
+    )
     _add_common_args(export_parser)
 
     # deploy command
@@ -154,6 +159,11 @@ def main() -> None:
         default=".",
         help="Repository root path (default: current directory)",
     )
+    deploy_parser.add_argument(
+        "--insecure",
+        action="store_true",
+        help="Disable SSL certificate verification (for self-signed certificates)",
+    )
     _add_common_args(deploy_parser)
 
     # rollback command
@@ -187,6 +197,11 @@ def main() -> None:
         type=str,
         default=".",
         help="Repository root path (default: current directory)",
+    )
+    rollback_parser.add_argument(
+        "--insecure",
+        action="store_true",
+        help="Disable SSL certificate verification (for self-signed certificates)",
     )
     _add_common_args(rollback_parser)
 

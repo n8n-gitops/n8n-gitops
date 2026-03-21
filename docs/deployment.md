@@ -99,6 +99,14 @@ n8n-gitops deploy --prune
 
 **Warning**: This will permanently delete workflows. Use with caution.
 
+### `--insecure`
+
+Disable SSL certificate verification for self-signed certificates:
+
+```bash
+n8n-gitops deploy --insecure
+```
+
 ## Deployment Process
 
 ### 1. Load and Validate

@@ -89,6 +89,18 @@ To get your n8n API key:
 3. Create a new API key
 4. Copy the key (you won't be able to see it again)
 
+## Self-Signed Certificates
+
+If your n8n instance uses a self-signed SSL certificate, use the `--insecure` flag to disable certificate verification:
+
+```bash
+n8n-gitops export --insecure
+n8n-gitops deploy --insecure --git-ref v1.0.0
+n8n-gitops rollback --insecure --git-ref v0.9.0
+```
+
+**Warning**: This disables SSL certificate verification for all requests. Only use this when connecting to trusted instances with self-signed certificates.
+
 ## Security Best Practices
 
 1. **Never commit** `.n8n-auth` to version control

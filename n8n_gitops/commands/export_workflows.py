@@ -16,6 +16,82 @@ from n8n_gitops.n8n_client import N8nClient
 from n8n_gitops.normalize import normalize_json, strip_volatile_fields
 from n8n_gitops.render import CODE_FIELD_NAMES
 
+# Node types that never require credentials
+_NODES_WITHOUT_CREDENTIALS = frozenset({
+    "n8n-nodes-base.stickyNote",
+    "n8n-nodes-base.set",
+    "n8n-nodes-base.if",
+    "n8n-nodes-base.switch",
+    "n8n-nodes-base.merge",
+    "n8n-nodes-base.aggregate",
+    "n8n-nodes-base.code",
+    "n8n-nodes-base.function",
+    "n8n-nodes-base.functionItem",
+    "n8n-nodes-base.noOp",
+    "n8n-nodes-base.start",
+    "n8n-nodes-base.manualTrigger",
+    "n8n-nodes-base.scheduleTrigger",
+    "n8n-nodes-base.form",
+    "n8n-nodes-base.formTrigger",
+    "n8n-nodes-base.respondToWebhook",
+    "n8n-nodes-base.splitInBatches",
+    "n8n-nodes-base.wait",
+    "n8n-nodes-base.executeWorkflow",
+    "n8n-nodes-base.errorTrigger",
+    "n8n-nodes-base.filter",
+    "n8n-nodes-base.sort",
+    "n8n-nodes-base.limit",
+    "n8n-nodes-base.removeDuplicates",
+    "n8n-nodes-base.itemLists",
+    "n8n-nodes-base.dateTime",
+    "n8n-nodes-base.crypto",
+    "n8n-nodes-base.xml",
+    "n8n-nodes-base.html",
+    "n8n-nodes-base.markdown",
+    "n8n-nodes-base.renameKeys",
+    "n8n-nodes-base.spreadsheetFile",
+    "n8n-nodes-base.webhook",
+    "@n8n/n8n-nodes-langchain.agent",
+    "@n8n/n8n-nodes-langchain.chainLlm",
+    "@n8n/n8n-nodes-langchain.chainSummarization",
+    "@n8n/n8n-nodes-langchain.outputParserStructured",
+    "@n8n/n8n-nodes-langchain.outputParserAutofixing",
+    "@n8n/n8n-nodes-langchain.outputParserItemList",
+})
+
+
+def _infer_credential_type(node: dict[str, Any]) -> tuple[str, str] | None:
+    """Infer credential type from node parameters or type.
+
+    Args:
+        node: Node object from workflow
+
+    Returns:
+        Tuple of (credential_type, source) or None if not inferrable.
+        source is either "parameter" or "node_type".
+    """
+    node_type = node.get("type", "")
+
+    if node_type in _NODES_WITHOUT_CREDENTIALS:
+        return None
+
+    # Primary: check parameters.nodeCredentialType
+    params = node.get("parameters", {})
+    if isinstance(params, dict):
+        nct = params.get("nodeCredentialType")
+        if isinstance(nct, str) and nct:
+            return nct, "parameter"
+
+    # Secondary: extract service name from node type
+    # Skip generic nodes where the type name is not a useful credential hint
+    _GENERIC_NODE_NAMES = {"httpRequest", "executeCommand", "readWriteFile"}
+    if "." in node_type:
+        service = node_type.rsplit(".", 1)[1]
+        if service not in _GENERIC_NODE_NAMES:
+            return service, "node_type"
+
+    return None
+
 
 def _load_externalize_code_setting(repo_root: Path) -> bool:
     """Load externalize_code setting from manifest.
@@ -140,6 +216,31 @@ def _update_credentials_map(
             credentials_map[cred_type][cred_name].append(workflow_name)
 
 
+def _update_inferred_credentials_map(
+    inferred_map: dict[str, dict[str, dict[str, Any]]],
+    workflow_name: str,
+    inferred_credentials: list[dict[str, str]]
+) -> None:
+    """Update inferred credentials map.
+
+    Args:
+        inferred_map: Map of credential type -> node_type -> {source, workflows}
+        workflow_name: Name of the workflow
+        inferred_credentials: List of inferred credential dicts
+    """
+    for cred in inferred_credentials:
+        cred_type = cred["type"]
+        node_type = cred["node_type"]
+        source = cred["source"]
+
+        if cred_type not in inferred_map:
+            inferred_map[cred_type] = {}
+        if node_type not in inferred_map[cred_type]:
+            inferred_map[cred_type][node_type] = {"source": source, "workflows": []}
+        if workflow_name not in inferred_map[cred_type][node_type]["workflows"]:
+            inferred_map[cred_type][node_type]["workflows"].append(workflow_name)
+
+
 def _extract_tag_names(workflow: dict[str, Any]) -> list[str]:
     """Extract tag names from workflow.
 
@@ -165,6 +266,7 @@ def _export_single_workflow(
     scripts_dir: Path,
     externalize_code: bool,
     credentials_map: dict[str, dict[str, list[str]]],
+    inferred_credentials_map: dict[str, dict[str, dict[str, Any]]],
 ) -> tuple[dict[str, Any] | None, int]:
     """Export a single workflow.
 
@@ -174,7 +276,8 @@ def _export_single_workflow(
         workflows_dir: Directory to save workflow JSON
         scripts_dir: Directory to save script files
         externalize_code: Whether to externalize code blocks
-        credentials_map: Map to update with workflow credentials
+        credentials_map: Map to update with configured credentials
+        inferred_credentials_map: Map to update with inferred credentials
 
     Returns:
         Tuple of (workflow spec for manifest, externalized count) or (None, 0) if failed
@@ -194,9 +297,10 @@ def _export_single_workflow(
         logger.error(f"    ✗ Error fetching workflow: {e}")
         return None, 0
 
-    # Update credentials map
-    workflow_credentials = _extract_credentials(workflow)
-    _update_credentials_map(credentials_map, wf_name, workflow_credentials)
+    # Update credentials maps
+    configured_creds, inferred_creds = _extract_credentials(workflow)
+    _update_credentials_map(credentials_map, wf_name, configured_creds)
+    _update_inferred_credentials_map(inferred_credentials_map, wf_name, inferred_creds)
 
     # Clean workflow
     workflow_cleaned = strip_volatile_fields(
@@ -239,24 +343,28 @@ def _export_single_workflow(
 
 def _write_credentials_yaml(
     credentials_map: dict[str, dict[str, list[str]]],
+    inferred_credentials_map: dict[str, dict[str, dict[str, Any]]],
     n8n_root: Path,
     repo_root: Path
 ) -> None:
     """Write credentials.yaml documentation file.
 
     Args:
-        credentials_map: Map of credential types to names to workflow lists
+        credentials_map: Map of configured credential types to names to workflow lists
+        inferred_credentials_map: Map of inferred credential types to node types
         n8n_root: n8n directory path
         repo_root: Repository root path
     """
-    if not credentials_map:
+    if not credentials_map and not inferred_credentials_map:
         return
 
     logger.info("\nGenerating credentials documentation...")
     credentials_yaml_path = n8n_root / "credentials.yaml"
 
     # Transform to desired YAML structure
-    credentials_output: dict[str, list[dict[str, Any]]] = {}
+    credentials_output: dict[str, Any] = {}
+
+    # Configured credentials
     for cred_type in sorted(credentials_map.keys()):
         credentials_output[cred_type] = []
         for cred_name in sorted(credentials_map[cred_type].keys()):
@@ -266,15 +374,44 @@ def _write_credentials_yaml(
                 "workflows": workflows_list
             })
 
+    # Inferred credentials
+    if inferred_credentials_map:
+        inferred_output: dict[str, list[dict[str, Any]]] = {}
+        for cred_type in sorted(inferred_credentials_map.keys()):
+            inferred_output[cred_type] = []
+            for node_type in sorted(inferred_credentials_map[cred_type].keys()):
+                entry = inferred_credentials_map[cred_type][node_type]
+                inferred_output[cred_type].append({
+                    "node_type": node_type,
+                    "source": entry["source"],
+                    "workflows": sorted(entry["workflows"]),
+                })
+        credentials_output["_inferred"] = inferred_output
+
     try:
         credentials_yaml_content = yaml.dump(
             credentials_output,
             default_flow_style=False,
             sort_keys=False,
+            allow_unicode=True,
         )
         credentials_yaml_path.write_text(credentials_yaml_content)
-        total_creds = sum(len(creds) for creds in credentials_output.values())
-        logger.info(f"  ✓ Documented {total_creds} credential(s) in {credentials_yaml_path.relative_to(repo_root)}")
+        total_configured = sum(
+            len(creds) for key, creds in credentials_output.items()
+            if key != "_inferred" and isinstance(creds, list)
+        )
+        total_inferred = sum(
+            len(entries) for entries in inferred_credentials_map.values()
+        )
+        parts = []
+        if total_configured:
+            parts.append(f"{total_configured} configured")
+        if total_inferred:
+            parts.append(f"{total_inferred} inferred")
+        logger.info(
+            f"  ✓ Documented {' + '.join(parts)} credential(s)"
+            f" in {credentials_yaml_path.relative_to(repo_root)}"
+        )
     except Exception as e:
         logger.error(f"  ✗ Error writing credentials.yaml: {e}")
 
@@ -379,7 +516,8 @@ def run_export(args: argparse.Namespace) -> None:
     logger.info(f"Target directory: {workflows_dir}")
     logger.info("")
 
-    client = N8nClient(auth.api_url, auth.api_key)
+    insecure = getattr(args, "insecure", False)
+    client = N8nClient(auth.api_url, auth.api_key, insecure=insecure)
 
     # Fetch data
     tags_mapping = _fetch_tags_mapping(client)
@@ -398,18 +536,19 @@ def run_export(args: argparse.Namespace) -> None:
     exported_specs: list[dict[str, Any]] = []
     total_externalized = 0
     credentials_map: dict[str, dict[str, list[str]]] = {}
+    inferred_credentials_map: dict[str, dict[str, dict[str, Any]]] = {}
 
     for wf_summary in workflows_to_export:
         spec, externalized_count = _export_single_workflow(
             client, wf_summary, workflows_dir, scripts_dir,
-            externalize_code, credentials_map
+            externalize_code, credentials_map, inferred_credentials_map
         )
         if spec:
             exported_specs.append(spec)
             total_externalized += externalized_count
 
     # Write output files
-    _write_credentials_yaml(credentials_map, n8n_root, repo_root)
+    _write_credentials_yaml(credentials_map, inferred_credentials_map, n8n_root, repo_root)
     _write_manifest_file(exported_specs, tags_mapping, externalize_code, manifest_file, repo_root)
 
     # Summary
@@ -434,29 +573,57 @@ def _sanitize_filename(name: str) -> str:
     return safe or "workflow"
 
 
-def _extract_credentials(workflow: dict[str, Any]) -> list[dict[str, str]]:
+def _extract_credentials(
+    workflow: dict[str, Any]
+) -> tuple[list[dict[str, str]], list[dict[str, str]]]:
     """Extract credential references from workflow.
+
+    Returns both configured credentials (from node.credentials) and
+    inferred credentials (from node type and parameters).
 
     Args:
         workflow: Workflow JSON object
 
     Returns:
-        List of dicts with 'type' and 'name' keys
+        Tuple of (configured, inferred).
+        configured: list of {"type", "name"}
+        inferred: list of {"type", "node_type", "source", "node_name"}
     """
-    credentials = []
+    configured: list[dict[str, str]] = []
+    inferred: list[dict[str, str]] = []
+
     for node in workflow.get("nodes", []):
         if not isinstance(node, dict):
             continue
+
+        node_type = node.get("type", "")
+        node_name = node.get("name", "")
+
+        # Extract configured credentials
         node_creds = node.get("credentials", {})
-        if not isinstance(node_creds, dict):
-            continue
-        for cred_type, cred_data in node_creds.items():
-            if isinstance(cred_data, dict) and "name" in cred_data:
-                credentials.append({
-                    "type": cred_type,
-                    "name": cred_data["name"]
+        configured_types: set[str] = set()
+        if isinstance(node_creds, dict):
+            for cred_type, cred_data in node_creds.items():
+                if isinstance(cred_data, dict) and "name" in cred_data:
+                    configured.append({
+                        "type": cred_type,
+                        "name": cred_data["name"]
+                    })
+                    configured_types.add(cred_type)
+
+        # Infer credentials only when none are configured on this node
+        if not configured_types:
+            result = _infer_credential_type(node)
+            if result:
+                inferred_type, source = result
+                inferred.append({
+                    "type": inferred_type,
+                    "node_type": node_type,
+                    "source": source,
+                    "node_name": node_name,
                 })
-    return credentials
+
+    return configured, inferred
 
 
 def _get_file_extension(field_name: str) -> str:

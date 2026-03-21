@@ -4,6 +4,7 @@ import time
 from typing import Any
 
 import requests
+import urllib3
 
 from n8n_gitops.exceptions import APIError
 
@@ -96,6 +97,7 @@ class N8nClient:
         api_key: str,
         timeout: int = 30,
         max_retries: int = 3,
+        insecure: bool = False,
     ) -> None:
         """Initialize n8n API client.
 
@@ -104,6 +106,7 @@ class N8nClient:
             api_key: API key for authentication
             timeout: Request timeout in seconds
             max_retries: Maximum number of retries for 429/5xx errors
+            insecure: Disable SSL certificate verification
         """
         self.api_url = api_url.rstrip("/")
         self.api_key = api_key
@@ -117,6 +120,9 @@ class N8nClient:
                 "Accept": "application/json",
             }
         )
+        if insecure:
+            self.session.verify = False
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
     def _execute_request(
         self,
