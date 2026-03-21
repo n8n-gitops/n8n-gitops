@@ -8,7 +8,7 @@ from typing import Any
 from n8n_gitops import logger
 from n8n_gitops.envschema import validate_env_schema
 from n8n_gitops.exceptions import ManifestError, RenderError, ValidationError
-from n8n_gitops.gitref import GitSnapshot, create_snapshot
+from n8n_gitops.gitref import Snapshot, create_snapshot
 from n8n_gitops.manifest import Manifest, load_manifest
 from n8n_gitops.normalize import normalize_json
 from n8n_gitops.render import RenderOptions, RenderReport, render_workflow_json
@@ -24,7 +24,7 @@ NULLABLE_FIELDS = ["meta", "pinData", "staticData"]
 
 
 def _load_manifest_safe(
-    snapshot: GitSnapshot,
+    snapshot: Snapshot,
     n8n_root: str,
     errors: list[str]
 ) -> Manifest | None:
@@ -48,7 +48,7 @@ def _load_manifest_safe(
 
 
 def _load_workflow_file(
-    snapshot: GitSnapshot,
+    snapshot: Snapshot,
     workflow_path: str,
     errors: list[str]
 ) -> dict[str, Any] | None:
@@ -118,7 +118,7 @@ def _process_render_report(
 
 def _render_and_validate_workflow(
     workflow: dict[str, Any],
-    snapshot: GitSnapshot,
+    snapshot: Snapshot,
     n8n_root: str,
     args: argparse.Namespace,
     spec_name: str,
@@ -229,7 +229,7 @@ def _check_problematic_fields(
 
 def _validate_single_workflow(
     spec: Any,
-    snapshot: GitSnapshot,
+    snapshot: Snapshot,
     n8n_root: str,
     args: argparse.Namespace,
     warnings: list[str],
@@ -272,7 +272,7 @@ def _validate_single_workflow(
 
 
 def _validate_env_schema(
-    snapshot: GitSnapshot,
+    snapshot: Snapshot,
     n8n_root: str,
     args: argparse.Namespace,
     warnings: list[str],
