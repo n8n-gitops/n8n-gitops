@@ -1,5 +1,54 @@
 # Changelog
 
+## [0.3.2] - 2026-03-22
+
+### Added
+
+- **`configure` command** with named config profiles
+  - Save multiple n8n instance connections to `.n8n-gitops.yaml`
+  - Use `--config <name>` on export, deploy, and rollback commands
+  - Supports `--insecure` flag per profile for self-signed certificates
+
+- **`--insecure` flag** for SSL certificate verification
+  - Added to export, deploy, and rollback commands
+  - Supports n8n instances with self-signed certificates
+  - Suppresses urllib3 InsecureRequestWarning when enabled
+
+- **Credential inference** in `credentials.yaml`
+  - Detects required credentials from node types and parameters
+  - Inferred credentials appear under `_inferred` section
+  - Helps users identify what credentials to set up before configuring them
+  - Uses `parameters.nodeCredentialType` (primary) and node type (fallback)
+
+### Fixed
+
+- **n8n v2 API compatibility** for deploy command
+  - Strip `activeVersion`, `activeVersionId`, `versionCounter`, `description` fields
+  - Filter unknown settings fields (e.g., `binaryMode`) rejected by strict API validation
+  - Strip `activeVersionId` and `versionCounter` during export
+
+- **Fix `GitSnapshot` import** in validate command
+  - Renamed to match `Snapshot` protocol class in `gitref.py`
+
+### Changed
+
+- **Removed `.n8n-auth` file support** in favor of config profiles
+  - Authentication now via CLI flags, `--config` profiles, or environment variables
+  - `.n8n-gitops.yaml` replaces `.n8n-auth` for persistent credentials
+  - Updated project templates, documentation, and tests
+
+- **Refactored CLI argument handling**
+  - Shared `_add_api_args` helper for consistent `--config`, `--api-url`, `--api-key`, `--insecure`, `--repo-root` across commands
+  - `insecure` flag now part of `AuthConfig` dataclass
+
+## [0.3.1] - 2026-03-20
+
+### Changed
+
+- Migrated to `uv` for faster dependency management
+- Added documentation update workflow
+- Updated documentation links and restructured assets directory
+
 ## [0.3.0] - 2025-12-19
 
 ### Changed
