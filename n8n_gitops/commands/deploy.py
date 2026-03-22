@@ -115,6 +115,7 @@ def _build_deployment_plan(
     snapshot: Any,
     n8n_root: str,
     name_to_id: dict[str, str],
+    name_to_archived: dict[str, bool],
     git_ref: str | None,
 ) -> list[dict[str, Any]]:
     """Build deployment plan for workflows.
@@ -124,6 +125,7 @@ def _build_deployment_plan(
         snapshot: Git snapshot
         n8n_root: Root directory for n8n files
         name_to_id: Mapping of workflow names to IDs
+        name_to_archived: Mapping of workflow names to archived status
         git_ref: Git reference for deployment
 
     Returns:
@@ -167,9 +169,11 @@ def _build_deployment_plan(
         if spec.name in name_to_id:
             action = "update"
             workflow_id = name_to_id[spec.name]
+            is_archived = name_to_archived.get(spec.name, False)
         else:
             action = "create"
             workflow_id = None
+            is_archived = False
 
         plan.append(
             {
@@ -177,6 +181,7 @@ def _build_deployment_plan(
                 "workflow": rendered,
                 "action": action,
                 "workflow_id": workflow_id,
+                "is_archived": is_archived,
                 "reports": reports,
             }
         )
@@ -240,21 +245,33 @@ def _deploy_workflow_update(
     spec: Any,
     api_workflow: dict[str, Any],
     workflow_id: str,
+    is_archived: bool = False,
 ) -> str:
     """Update an existing workflow in place.
 
     Preserves the workflow ID, webhook URLs, and execution history.
+    Automatically unarchives the workflow if it is archived.
 
     Args:
         client: N8n API client
         spec: Workflow spec
         api_workflow: Workflow data for API
         workflow_id: ID of workflow to update
+        is_archived: Whether the workflow is currently archived
 
     Returns:
         Workflow ID (unchanged)
     """
     logger.info(f"  Updating: {spec.name}...")
+
+    if is_archived:
+        logger.info("    Workflow is archived, deleting and recreating...")
+        client.delete_workflow(workflow_id)
+        result = client.create_workflow(api_workflow)
+        new_id = result.get("id")
+        logger.info(f"    ✓ Recreated (new ID: {new_id})")
+        return new_id
+
     client.update_workflow(workflow_id, api_workflow)
     logger.info(f"    ✓ Updated (ID: {workflow_id})")
     return workflow_id
@@ -314,6 +331,7 @@ def _execute_workflow_deployment(
     workflow = plan_item["workflow"]
     action = plan_item["action"]
     workflow_id = plan_item["workflow_id"]
+    is_archived = plan_item.get("is_archived", False)
 
     try:
         # Prepare workflow for API (remove fields that cause validation errors)
@@ -322,7 +340,9 @@ def _execute_workflow_deployment(
         if action == "create":
             workflow_id = _deploy_workflow_create(client, spec, api_workflow)
         elif action == "update":
-            workflow_id = _deploy_workflow_update(client, spec, api_workflow, workflow_id)
+            workflow_id = _deploy_workflow_update(
+                client, spec, api_workflow, workflow_id, is_archived
+            )
 
         # Set active state based on manifest
         if workflow_id:
@@ -342,22 +362,26 @@ def _execute_workflow_deployment(
         raise SystemExit(1)
 
 
-def _build_name_to_id_mapping(remote_workflows: list[dict[str, Any]]) -> dict[str, str]:
-    """Build mapping of workflow names to IDs.
+def _build_name_to_id_mapping(
+    remote_workflows: list[dict[str, Any]]
+) -> tuple[dict[str, str], dict[str, bool]]:
+    """Build mapping of workflow names to IDs and archived status.
 
     Args:
         remote_workflows: List of remote workflows
 
     Returns:
-        Dictionary mapping workflow names to IDs
+        Tuple of (name_to_id, name_to_archived) dictionaries
     """
     name_to_id: dict[str, str] = {}
+    name_to_archived: dict[str, bool] = {}
     for wf in remote_workflows:
         name = wf.get("name")
         wf_id = wf.get("id")
         if name and wf_id:
             name_to_id[name] = wf_id
-    return name_to_id
+            name_to_archived[name] = wf.get("isArchived", False)
+    return name_to_id, name_to_archived
 
 
 def _find_workflows_to_prune(
@@ -552,10 +576,12 @@ def run_deploy(args: argparse.Namespace) -> None:
 
     # Fetch remote workflows and build mappings
     remote_workflows = _fetch_remote_workflows(client)
-    name_to_id = _build_name_to_id_mapping(remote_workflows)
+    name_to_id, name_to_archived = _build_name_to_id_mapping(remote_workflows)
 
     # Build deployment plan
-    plan = _build_deployment_plan(manifest, snapshot, n8n_root, name_to_id, args.git_ref)
+    plan = _build_deployment_plan(
+        manifest, snapshot, n8n_root, name_to_id, name_to_archived, args.git_ref
+    )
 
     # Find workflows to prune if requested
     workflows_to_prune = []
