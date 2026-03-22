@@ -5,7 +5,6 @@ import json
 from pathlib import Path
 from typing import Any
 
-from datetime import datetime
 
 from n8n_gitops import logger
 from n8n_gitops.config import load_auth
@@ -164,9 +163,9 @@ def _build_deployment_plan(
         # Ensure name matches manifest
         rendered["name"] = spec.name
 
-        # Determine action (default is replace: delete old + create new)
+        # Determine action (upsert: update if exists, create if not)
         if spec.name in name_to_id:
-            action = "replace"  # Delete old workflow and create new one
+            action = "update"
             workflow_id = name_to_id[spec.name]
         else:
             action = "create"
@@ -188,14 +187,12 @@ def _build_deployment_plan(
 def _print_deployment_plan(
     plan: list[dict[str, Any]],
     workflows_to_prune: list[dict[str, Any]],
-    backup: bool,
 ) -> None:
     """Print deployment plan to user.
 
     Args:
         plan: Deployment plan items
         workflows_to_prune: Workflows to delete
-        backup: Whether backup mode is enabled
     """
     logger.info("\nDeployment plan:")
     for item in plan:
@@ -203,11 +200,8 @@ def _print_deployment_plan(
         action = item["action"]
         if action == "create":
             logger.info(f"  + CREATE: {spec.name}")
-        elif action == "replace":
-            if backup:
-                logger.info(f"  ⟳ REPLACE (with backup): {spec.name}")
-            else:
-                logger.info(f"  ⟳ REPLACE: {spec.name}")
+        elif action == "update":
+            logger.info(f"  ⟳ UPDATE: {spec.name}")
 
         for report in item["reports"]:
             if report.status == "included":
@@ -241,71 +235,29 @@ def _deploy_workflow_create(
     return workflow_id
 
 
-def _deploy_workflow_replace_with_backup(
+def _deploy_workflow_update(
     client: N8nClient,
     spec: Any,
     api_workflow: dict[str, Any],
     workflow_id: str,
-) -> str | None:
-    """Replace workflow with backup of old version.
+) -> str:
+    """Update an existing workflow in place.
+
+    Preserves the workflow ID, webhook URLs, and execution history.
 
     Args:
         client: N8n API client
         spec: Workflow spec
         api_workflow: Workflow data for API
-        workflow_id: ID of workflow to replace
+        workflow_id: ID of workflow to update
 
     Returns:
-        New workflow ID or None
+        Workflow ID (unchanged)
     """
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    backup_name = f"[BKP {timestamp}] {spec.name}"
-    logger.info(f"    Backing up old workflow as: {backup_name}")
-
-    # Rename old workflow
-    old_workflow = client.get_workflow(workflow_id)
-    old_workflow["name"] = backup_name
-    old_workflow_cleaned = _prepare_workflow_for_api(old_workflow)
-    client.update_workflow(workflow_id, old_workflow_cleaned)
-    logger.info("    ✓ Backup created")
-
-    # Now create new workflow with original name
-    logger.info("    Creating new workflow...")
-    result = client.create_workflow(api_workflow)
-    new_workflow_id = result.get("id")
-    logger.info(f"    ✓ Created with ID: {new_workflow_id}")
-    return new_workflow_id
-
-
-def _deploy_workflow_replace(
-    client: N8nClient,
-    api_workflow: dict[str, Any],
-    workflow_id: str,
-) -> str | None:
-    """Replace workflow by deleting old and creating new.
-
-    Args:
-        client: N8n API client
-        api_workflow: Workflow data for API
-        workflow_id: ID of workflow to replace
-
-    Returns:
-        New workflow ID or None
-    """
-    # Delete old workflow and create new one
-    logger.info("    Deleting old workflow...")
-    try:
-        client.delete_workflow(workflow_id)
-        logger.info("    ✓ Old workflow deleted")
-    except Exception as e:
-        logger.warning(f"    ⚠ Could not delete old workflow: {e}")
-        logger.warning("    → Creating new workflow anyway...")
-
-    logger.info("    Creating new workflow...")
-    result = client.create_workflow(api_workflow)
-    new_workflow_id = result.get("id")
-    logger.info(f"    ✓ Created with ID: {new_workflow_id}")
-    return new_workflow_id
+    logger.info(f"  Updating: {spec.name}...")
+    client.update_workflow(workflow_id, api_workflow)
+    logger.info(f"    ✓ Updated (ID: {workflow_id})")
+    return workflow_id
 
 
 def _set_workflow_state(
@@ -346,7 +298,6 @@ def _set_workflow_state(
 def _execute_workflow_deployment(
     client: N8nClient,
     plan_item: dict[str, Any],
-    backup: bool,
     tag_name_to_id: dict[str, str],
 ) -> None:
     """Execute deployment of a single workflow.
@@ -354,7 +305,6 @@ def _execute_workflow_deployment(
     Args:
         client: N8n API client
         plan_item: Deployment plan item
-        backup: Whether to backup on replace
         tag_name_to_id: Mapping from tag name to tag ID
 
     Raises:
@@ -371,14 +321,8 @@ def _execute_workflow_deployment(
 
         if action == "create":
             workflow_id = _deploy_workflow_create(client, spec, api_workflow)
-        elif action == "replace":
-            logger.info(f"  Replacing: {spec.name}...")
-            if backup:
-                workflow_id = _deploy_workflow_replace_with_backup(
-                    client, spec, api_workflow, workflow_id
-                )
-            else:
-                workflow_id = _deploy_workflow_replace(client, api_workflow, workflow_id)
+        elif action == "update":
+            workflow_id = _deploy_workflow_update(client, spec, api_workflow, workflow_id)
 
         # Set active state based on manifest
         if workflow_id:
@@ -462,7 +406,6 @@ def _fetch_remote_workflows(client: N8nClient) -> list[dict[str, Any]]:
 def _execute_deployments(
     client: N8nClient,
     plan: list[dict[str, Any]],
-    backup: bool,
     tag_name_to_id: dict[str, str],
 ) -> None:
     """Execute deployment of all workflows in plan.
@@ -470,12 +413,11 @@ def _execute_deployments(
     Args:
         client: N8n API client
         plan: List of deployment plan items
-        backup: Whether to backup on replace
         tag_name_to_id: Mapping from tag name to tag ID
     """
     logger.info("\nExecuting deployment...")
     for item in plan:
-        _execute_workflow_deployment(client, item, backup, tag_name_to_id)
+        _execute_workflow_deployment(client, item, tag_name_to_id)
 
 
 def _execute_prune(
@@ -577,14 +519,6 @@ def run_deploy(args: argparse.Namespace) -> None:
     repo_root = Path(args.repo_root).resolve()
     n8n_root = "n8n"
 
-    # Validate conflicting flags
-    if args.backup and args.prune:
-        logger.critical("Error: Cannot use --backup and --prune together")
-        logger.critical("  --backup: Creates backups when replacing workflows")
-        logger.critical("  --prune: Deletes workflows not in manifest")
-        logger.critical("These operations are mutually exclusive. Choose one or neither.")
-        raise SystemExit(1)
-
     # Load auth config
     try:
         auth = load_auth(repo_root, args)
@@ -629,7 +563,7 @@ def run_deploy(args: argparse.Namespace) -> None:
         workflows_to_prune = _find_workflows_to_prune(remote_workflows, manifest)
 
     # Print deployment plan
-    _print_deployment_plan(plan, workflows_to_prune, args.backup)
+    _print_deployment_plan(plan, workflows_to_prune)
 
     # Dry run check
     if args.dry_run:
@@ -637,7 +571,7 @@ def run_deploy(args: argparse.Namespace) -> None:
         raise SystemExit(0)
 
     # Execute deployment and prune
-    _execute_deployments(client, plan, args.backup, tag_name_to_id)
+    _execute_deployments(client, plan, tag_name_to_id)
     _execute_prune(client, workflows_to_prune)
 
     logger.info("\n✓ Deployment successful!")

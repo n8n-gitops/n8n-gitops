@@ -184,11 +184,6 @@ def main() -> None:
         help="Show what would be deployed without making changes",
     )
     deploy_parser.add_argument(
-        "--backup",
-        action="store_true",
-        help="Backup old workflow by renaming it with [BKP timestamp] before replacing",
-    )
-    deploy_parser.add_argument(
         "--prune",
         action="store_true",
         help="Delete workflows in n8n that are not in the manifest",
