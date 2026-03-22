@@ -29,19 +29,12 @@ def run_create_project(args: argparse.Namespace) -> None:
     scripts_dir.mkdir(parents=True, exist_ok=True)
 
     # Create .gitignore
-    gitignore_content = """.n8n-auth
-.n8n-gitops.yaml
+    gitignore_content = """.n8n-gitops.yaml
 .env
 __pycache__/
 *.pyc
 """
     (project_path / ".gitignore").write_text(gitignore_content)
-
-    # Create .n8n-auth.example
-    n8n_auth_example_content = """N8N_API_URL=
-N8N_API_KEY=
-"""
-    (project_path / ".n8n-auth.example").write_text(n8n_auth_example_content)
 
     # Create n8n/manifests/workflows.yaml
     workflows_yaml_content = """# Code externalization setting
@@ -71,9 +64,9 @@ This project uses [n8n-gitops](https://github.com/n8n-gitops/n8n-gitops) to mana
 
 ## Getting Started
 
-1. Copy `.n8n-auth.example` to `.n8n-auth` and fill in your n8n API credentials:
+1. Configure your n8n API credentials:
    ```bash
-   cp .n8n-auth.example .n8n-auth
+   n8n-gitops configure --config dev --api-url https://your-n8n.example.com --api-key YOUR_KEY
    ```
 
 2. Export your existing workflows from n8n:
@@ -103,7 +96,6 @@ This project uses [n8n-gitops](https://github.com/n8n-gitops/n8n-gitops) to mana
 │   │   └── env.schema.json
 │   └── scripts/         # External code for workflow nodes
 ├── .gitignore
-├── .n8n-auth.example
 └── README.md
 ```
 
@@ -112,8 +104,8 @@ This project uses [n8n-gitops](https://github.com/n8n-gitops/n8n-gitops) to mana
 You can provide n8n API credentials in three ways (in order of priority):
 
 1. CLI flags: `--api-url` and `--api-key`
-2. Environment variables: `N8N_API_URL` and `N8N_API_KEY`
-3. `.n8n-auth` file in the project root
+2. Config profiles: `--config <name>` (saved via `n8n-gitops configure`)
+3. Environment variables: `N8N_API_URL` and `N8N_API_KEY`
 
 ## Commands
 
@@ -138,6 +130,5 @@ This directive will be replaced with the contents of the file during deployment.
     logger.info(f"Created n8n-gitops project at {project_path}")
     logger.info("\nNext steps:")
     logger.info(f"  1. cd {project_path}")
-    logger.info("  2. cp .n8n-auth.example .n8n-auth")
-    logger.info("  3. Edit .n8n-auth with your n8n API credentials")
-    logger.info("  4. Run: n8n-gitops export")
+    logger.info("  2. n8n-gitops configure --config dev --api-url URL --api-key KEY")
+    logger.info("  3. n8n-gitops export --config dev")

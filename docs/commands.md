@@ -95,7 +95,7 @@ my-n8n-project/
 │   │   └── env.schema.json
 │   └── scripts/
 ├── .gitignore
-└── .n8n-auth.example
+└── .n8n-gitops.yaml
 ```
 
 See [Getting Started](getting-started.md) for more details.
@@ -114,8 +114,8 @@ n8n-gitops export [--api-url URL] [--api-key KEY] [--repo-root PATH] [--insecure
 
 ### Options
 
-- `--api-url URL` - n8n API URL (overrides env and .n8n-auth)
-- `--api-key KEY` - n8n API key (overrides env and .n8n-auth)
+- `--api-url URL` - n8n API URL (overrides config profile and env)
+- `--api-key KEY` - n8n API key (overrides config profile and env)
 - `--repo-root PATH` - Repository root path (default: current directory)
 - `--insecure` - Disable SSL certificate verification (for self-signed certificates)
 
@@ -159,8 +159,8 @@ n8n-gitops deploy [options]
 - `--dry-run` - Show what would be deployed without making changes
 - `--backup` - Backup old workflow by renaming before replacing
 - `--prune` - Delete workflows in n8n that are not in the manifest
-- `--api-url URL` - n8n API URL (overrides env and .n8n-auth)
-- `--api-key KEY` - n8n API key (overrides env and .n8n-auth)
+- `--api-url URL` - n8n API URL (overrides config profile and env)
+- `--api-key KEY` - n8n API key (overrides config profile and env)
 - `--repo-root PATH` - Repository root path (default: current directory)
 - `--insecure` - Disable SSL certificate verification (for self-signed certificates)
 
@@ -206,8 +206,8 @@ n8n-gitops rollback --git-ref <ref> [options]
 
 - `--git-ref REF` - Git ref to rollback to (required)
 - `--dry-run` - Show what would be deployed without making changes
-- `--api-url URL` - n8n API URL (overrides env and .n8n-auth)
-- `--api-key KEY` - n8n API key (overrides env and .n8n-auth)
+- `--api-url URL` - n8n API URL (overrides config profile and env)
+- `--api-key KEY` - n8n API key (overrides config profile and env)
 - `--repo-root PATH` - Repository root path (default: current directory)
 - `--insecure` - Disable SSL certificate verification (for self-signed certificates)
 
@@ -362,8 +362,7 @@ n8n-gitops create-project my-project
 cd my-project
 
 # 2. Configure auth
-cp .n8n-auth.example .n8n-auth
-# Edit .n8n-auth with your credentials
+n8n-gitops configure --config dev --api-url https://n8n.example.com --api-key KEY
 
 # 3. Export workflows
 n8n-gitops export  # uses externalize_code from manifest (default: true)

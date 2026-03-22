@@ -39,12 +39,12 @@ def _add_api_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--api-url",
         type=str,
-        help="n8n API URL (overrides env and .n8n-auth)",
+        help="n8n API URL (overrides config profile and env)",
     )
     parser.add_argument(
         "--api-key",
         type=str,
-        help="n8n API key (overrides env and .n8n-auth)",
+        help="n8n API key (overrides config profile and env)",
     )
     parser.add_argument(
         "--repo-root",

@@ -12,8 +12,8 @@ n8n-gitops requires API credentials to connect to your n8n instance.
 Authentication credentials are resolved in this priority order:
 
 1. **CLI flags**: `--api-url` and `--api-key`
-2. **Environment variables**: `N8N_API_URL` and `N8N_API_KEY`
-3. **`.n8n-auth` file** in repository root
+2. **Config profiles**: `--config <name>` (saved via `n8n-gitops configure`)
+3. **Environment variables**: `N8N_API_URL` and `N8N_API_KEY`
 
 ## Method 1: Config Profiles (Recommended for multiple instances)
 
@@ -68,40 +68,6 @@ N8N_API_URL=https://your-n8n-instance.com
 N8N_API_KEY=your-api-key-here
 ```
 
-## Method 4: .n8n-auth File
-
-Create a `.n8n-auth` file in your repository root:
-
-```bash
-cp .n8n-auth.example .n8n-auth
-```
-
-Edit `.n8n-auth`:
-```
-N8N_API_URL=https://your-n8n-instance.com
-N8N_API_KEY=your-api-key-here
-```
-
-**Important**: The `.n8n-auth` file is gitignored by default to prevent accidentally committing secrets.
-
-### .n8n-auth File Format
-
-The file supports:
-- Simple `KEY=VALUE` format
-- Comments with `#`
-- Empty lines
-- Values with or without quotes
-
-Example:
-```bash
-# n8n API Configuration
-N8N_API_URL=https://your-n8n-instance.com
-N8N_API_KEY="your-api-key-here"
-
-# Optional: Custom timeout
-# TIMEOUT=60
-```
-
 ## Getting Your API Key
 
 To get your n8n API key:
@@ -113,19 +79,22 @@ To get your n8n API key:
 
 ## Self-Signed Certificates
 
-If your n8n instance uses a self-signed SSL certificate, use the `--insecure` flag to disable certificate verification:
+If your n8n instance uses a self-signed SSL certificate, use the `--insecure` flag or save it in a config profile:
 
 ```bash
+# Via flag
 n8n-gitops export --insecure
-n8n-gitops deploy --insecure --git-ref v1.0.0
-n8n-gitops rollback --insecure --git-ref v0.9.0
+
+# Or save in profile
+n8n-gitops configure --config dev --api-url URL --api-key KEY --insecure
+n8n-gitops export --config dev
 ```
 
 **Warning**: This disables SSL certificate verification for all requests. Only use this when connecting to trusted instances with self-signed certificates.
 
 ## Security Best Practices
 
-1. **Never commit** `.n8n-auth` to version control
+1. **Never commit** `.n8n-gitops.yaml` to version control (gitignored by default)
 2. **Use environment variables** in CI/CD pipelines
 3. **Rotate API keys** regularly
 4. **Use separate API keys** for different environments (dev, staging, prod)
@@ -164,9 +133,9 @@ Error: Missing N8N_API_URL or N8N_API_KEY
 ```
 
 Check that:
-1. Your `.n8n-auth` file exists and is in the repository root
-2. The file has the correct format (KEY=VALUE)
-3. Both `N8N_API_URL` and `N8N_API_KEY` are set
+1. You have a config profile set up (`n8n-gitops configure --config <name>`)
+2. Or environment variables `N8N_API_URL` and `N8N_API_KEY` are set
+3. Or you're passing `--api-url` and `--api-key` flags
 
 ### Error: Authentication failed
 

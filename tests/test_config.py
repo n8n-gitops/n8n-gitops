@@ -5,63 +5,63 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import pytest
+import yaml
 
-from n8n_gitops.config import _parse_n8n_auth, load_auth
+from n8n_gitops.config import load_auth, save_config_profile, load_config_profile
 from n8n_gitops.exceptions import ConfigError
 
 
-class TestParseN8nAuth:
-    """Test .n8n-auth file parsing."""
+class TestConfigProfile:
+    """Test config profile save/load."""
 
-    def test_parse_basic_auth(self):
-        """Test parsing basic KEY=VALUE format."""
+    def test_save_and_load_profile(self):
+        """Test saving and loading a config profile."""
         with TemporaryDirectory() as tmpdir:
-            auth_file = Path(tmpdir) / ".n8n-auth"
-            auth_file.write_text(
-                "N8N_API_URL=https://example.com\n"
-                "N8N_API_KEY=secret123\n"
-            )
-            result = _parse_n8n_auth(auth_file)
-            assert result["N8N_API_URL"] == "https://example.com"
-            assert result["N8N_API_KEY"] == "secret123"
+            repo_root = Path(tmpdir)
+            save_config_profile(repo_root, "dev", "https://dev.example.com", "dev-key", True)
 
-    def test_parse_with_quotes(self):
-        """Test parsing values with quotes."""
-        with TemporaryDirectory() as tmpdir:
-            auth_file = Path(tmpdir) / ".n8n-auth"
-            auth_file.write_text(
-                'N8N_API_URL="https://example.com"\n'
-                "N8N_API_KEY='secret123'\n"
-            )
-            result = _parse_n8n_auth(auth_file)
-            assert result["N8N_API_URL"] == "https://example.com"
-            assert result["N8N_API_KEY"] == "secret123"
+            profile = load_config_profile(repo_root, "dev")
+            assert profile["api_url"] == "https://dev.example.com"
+            assert profile["api_key"] == "dev-key"
+            assert profile["insecure"] is True
 
-    def test_parse_with_comments(self):
-        """Test that comments are ignored."""
+    def test_save_multiple_profiles(self):
+        """Test saving multiple profiles to the same file."""
         with TemporaryDirectory() as tmpdir:
-            auth_file = Path(tmpdir) / ".n8n-auth"
-            auth_file.write_text(
-                "# This is a comment\n"
-                "N8N_API_URL=https://example.com\n"
-                "# Another comment\n"
-                "N8N_API_KEY=secret123\n"
-            )
-            result = _parse_n8n_auth(auth_file)
-            assert len(result) == 2
-            assert result["N8N_API_URL"] == "https://example.com"
+            repo_root = Path(tmpdir)
+            save_config_profile(repo_root, "dev", "https://dev.example.com", "dev-key")
+            save_config_profile(repo_root, "prod", "https://prod.example.com", "prod-key")
 
-    def test_parse_empty_lines(self):
-        """Test that empty lines are ignored."""
+            dev = load_config_profile(repo_root, "dev")
+            prod = load_config_profile(repo_root, "prod")
+            assert dev["api_url"] == "https://dev.example.com"
+            assert prod["api_url"] == "https://prod.example.com"
+
+    def test_update_existing_profile(self):
+        """Test that saving an existing profile overwrites it."""
         with TemporaryDirectory() as tmpdir:
-            auth_file = Path(tmpdir) / ".n8n-auth"
-            auth_file.write_text(
-                "N8N_API_URL=https://example.com\n"
-                "\n"
-                "N8N_API_KEY=secret123\n"
-            )
-            result = _parse_n8n_auth(auth_file)
-            assert len(result) == 2
+            repo_root = Path(tmpdir)
+            save_config_profile(repo_root, "dev", "https://old.example.com", "old-key")
+            save_config_profile(repo_root, "dev", "https://new.example.com", "new-key")
+
+            profile = load_config_profile(repo_root, "dev")
+            assert profile["api_url"] == "https://new.example.com"
+            assert profile["api_key"] == "new-key"
+
+    def test_load_missing_file(self):
+        """Test that loading from missing file raises error."""
+        with TemporaryDirectory() as tmpdir:
+            with pytest.raises(ConfigError, match="not found"):
+                load_config_profile(Path(tmpdir), "dev")
+
+    def test_load_missing_profile(self):
+        """Test that loading missing profile raises error."""
+        with TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir)
+            save_config_profile(repo_root, "dev", "https://dev.example.com", "key")
+
+            with pytest.raises(ConfigError, match="prod"):
+                load_config_profile(repo_root, "prod")
 
 
 class TestLoadAuth:
@@ -81,29 +81,47 @@ class TestLoadAuth:
                 del os.environ["N8N_API_URL"]
                 del os.environ["N8N_API_KEY"]
 
-    def test_load_from_file(self):
-        """Test loading auth from .n8n-auth file."""
+    def test_load_from_config_profile(self):
+        """Test loading auth from config profile."""
         with TemporaryDirectory() as tmpdir:
             repo_root = Path(tmpdir)
-            auth_file = repo_root / ".n8n-auth"
-            auth_file.write_text(
-                "N8N_API_URL=https://file.example.com\n"
-                "N8N_API_KEY=file-secret\n"
-            )
+            save_config_profile(repo_root, "dev", "https://dev.example.com", "dev-key", True)
 
-            # Clear any existing env vars
             old_url = os.environ.pop("N8N_API_URL", None)
             old_key = os.environ.pop("N8N_API_KEY", None)
 
+            class Args:
+                api_url = None
+                api_key = None
+                insecure = False
+                config = "dev"
+
             try:
-                auth = load_auth(repo_root)
-                assert auth.api_url == "https://file.example.com"
-                assert auth.api_key == "file-secret"
+                auth = load_auth(repo_root, Args())
+                assert auth.api_url == "https://dev.example.com"
+                assert auth.api_key == "dev-key"
+                assert auth.insecure is True
             finally:
                 if old_url:
                     os.environ["N8N_API_URL"] = old_url
                 if old_key:
                     os.environ["N8N_API_KEY"] = old_key
+
+    def test_priority_cli_over_config(self):
+        """Test that CLI args take priority over config profile."""
+        with TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir)
+            save_config_profile(repo_root, "dev", "https://dev.example.com", "dev-key")
+
+            class Args:
+                api_url = "https://cli.example.com"
+                api_key = "cli-secret"
+                insecure = False
+                config = "dev"
+
+            auth = load_auth(repo_root, Args())
+            assert auth.api_url == "https://cli.example.com"
+            assert auth.api_key == "cli-secret"
 
     def test_priority_cli_over_env(self):
         """Test that CLI args take priority over environment."""
@@ -114,6 +132,8 @@ class TestLoadAuth:
             class Args:
                 api_url = "https://cli.example.com"
                 api_key = "cli-secret"
+                insecure = False
+                config = None
 
             try:
                 auth = load_auth(Path(tmpdir), Args())
@@ -126,7 +146,6 @@ class TestLoadAuth:
     def test_missing_credentials(self):
         """Test that missing credentials raise error."""
         with TemporaryDirectory() as tmpdir:
-            # Clear any existing env vars
             old_url = os.environ.pop("N8N_API_URL", None)
             old_key = os.environ.pop("N8N_API_KEY", None)
 

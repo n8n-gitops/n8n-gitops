@@ -37,21 +37,17 @@ my-n8n-project/
 │   │   └── env.schema.json
 │   └── scripts/
 ├── .gitignore
-└── .n8n-auth.example
+└── README.md
 ```
 
 ### 2. Configure authentication
 
-Copy the example auth file and add your n8n API credentials:
+Save a config profile with your n8n API credentials:
 
 ```bash
-cp .n8n-auth.example .n8n-auth
-```
-
-Edit `.n8n-auth`:
-```
-N8N_API_URL=https://your-n8n-instance.com
-N8N_API_KEY=your-api-key-here
+n8n-gitops configure --config dev \
+  --api-url https://your-n8n-instance.com \
+  --api-key your-api-key-here
 ```
 
 Alternatively, use environment variables:

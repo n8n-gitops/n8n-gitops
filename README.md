@@ -42,8 +42,9 @@ n8n-gitops create-project my-n8n-project
 cd my-n8n-project
 
 # Configure authentication
-cp .n8n-auth.example .n8n-auth
-# Edit .n8n-auth with your credentials
+n8n-gitops configure --config dev \
+  --api-url https://your-n8n-instance.com \
+  --api-key your-api-key-here
 
 # Export workflows
 n8n-gitops export
@@ -177,8 +178,7 @@ my-n8n-project/
 │   └── manifests/
 │       ├── workflows.yaml   # Workflow manifest
 │       └── env.schema.json  # Environment schema
-├── .gitignore
-└── .n8n-auth.example        # Auth config template
+└── .gitignore
 ```
 
 ## Development
