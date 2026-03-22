@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.3] - 2026-03-22
+
+### Changed
+
+- **Upsert deploy strategy** — workflows are now updated in place via PUT instead of deleted and recreated
+  - Preserves workflow IDs, webhook URLs, and execution history
+  - Archived workflows are automatically detected and fall back to delete+recreate (n8n public API limitation)
+  - Removed `--backup` flag (no longer needed with update-in-place)
+
 ## [0.3.2] - 2026-03-22
 
 ### Added
