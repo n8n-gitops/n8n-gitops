@@ -7,6 +7,62 @@ title: Commands Reference
 
 Complete reference for all n8n-gitops CLI commands.
 
+## configure
+
+Save a named config profile for connecting to an n8n instance.
+
+### Usage
+
+```bash
+n8n-gitops configure --config <name> --api-url <url> --api-key <key> [--insecure] [--repo-root PATH]
+```
+
+### Options
+
+- `--config NAME` - Profile name (e.g., dev, staging, prod) (required)
+- `--api-url URL` - n8n API URL (required)
+- `--api-key KEY` - n8n API key (required)
+- `--repo-root PATH` - Repository root path (default: current directory)
+- `--insecure` - Disable SSL certificate verification
+
+### Examples
+
+```bash
+# Save dev profile with self-signed cert
+n8n-gitops configure --config dev \
+  --api-url https://n8n-dev.example.com \
+  --api-key abc123 \
+  --insecure
+
+# Save prod profile
+n8n-gitops configure --config prod \
+  --api-url https://n8n.example.com \
+  --api-key xyz789
+
+# Use profiles with other commands
+n8n-gitops export --config dev
+n8n-gitops deploy --config prod --git-ref v1.0.0
+```
+
+### Config File
+
+Profiles are saved to `.n8n-gitops.yaml` in the repo root:
+
+```yaml
+dev:
+  api_url: https://n8n-dev.example.com
+  api_key: abc123
+  insecure: true
+prod:
+  api_url: https://n8n.example.com
+  api_key: xyz789
+  insecure: false
+```
+
+**Important**: This file contains API keys and is gitignored by default.
+
+---
+
 ## create-project
 
 Create a new n8n-gitops project structure.

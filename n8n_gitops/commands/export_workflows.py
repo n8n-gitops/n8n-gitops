@@ -517,8 +517,7 @@ def run_export(args: argparse.Namespace) -> None:
     logger.info(f"Target directory: {workflows_dir}")
     logger.info("")
 
-    insecure = getattr(args, "insecure", False)
-    client = N8nClient(auth.api_url, auth.api_key, insecure=insecure)
+    client = N8nClient(auth.api_url, auth.api_key, insecure=auth.insecure)
 
     # Fetch data
     tags_mapping = _fetch_tags_mapping(client)

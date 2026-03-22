@@ -30,6 +30,7 @@ def run_create_project(args: argparse.Namespace) -> None:
 
     # Create .gitignore
     gitignore_content = """.n8n-auth
+.n8n-gitops.yaml
 .env
 __pycache__/
 *.pyc

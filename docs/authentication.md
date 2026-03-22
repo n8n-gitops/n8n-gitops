@@ -15,7 +15,29 @@ Authentication credentials are resolved in this priority order:
 2. **Environment variables**: `N8N_API_URL` and `N8N_API_KEY`
 3. **`.n8n-auth` file** in repository root
 
-## Method 1: CLI Flags
+## Method 1: Config Profiles (Recommended for multiple instances)
+
+Save named profiles for different n8n instances:
+
+```bash
+# Save a profile
+n8n-gitops configure --config dev \
+  --api-url https://n8n-dev.example.com \
+  --api-key your-dev-key \
+  --insecure
+
+n8n-gitops configure --config prod \
+  --api-url https://n8n-prod.example.com \
+  --api-key your-prod-key
+
+# Use a profile
+n8n-gitops export --config dev
+n8n-gitops deploy --config prod --git-ref v1.0.0
+```
+
+Profiles are saved to `.n8n-gitops.yaml` in the repo root. This file is gitignored by default since it contains API keys.
+
+## Method 2: CLI Flags
 
 Pass credentials directly via command-line flags:
 
@@ -25,9 +47,9 @@ n8n-gitops export \
   --api-key your-api-key-here
 ```
 
-This method overrides all other authentication sources.
+This method overrides all other authentication sources, including config profiles.
 
-## Method 2: Environment Variables
+## Method 3: Environment Variables
 
 Set environment variables:
 
@@ -46,7 +68,7 @@ N8N_API_URL=https://your-n8n-instance.com
 N8N_API_KEY=your-api-key-here
 ```
 
-## Method 3: .n8n-auth File (Recommended)
+## Method 4: .n8n-auth File
 
 Create a `.n8n-auth` file in your repository root:
 

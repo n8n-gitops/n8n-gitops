@@ -25,6 +25,40 @@ def _add_common_args(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def _add_api_args(parser: argparse.ArgumentParser) -> None:
+    """Add API connection arguments to a parser.
+
+    Args:
+        parser: The argument parser to add arguments to
+    """
+    parser.add_argument(
+        "--config",
+        type=str,
+        help="Named config profile from .n8n-gitops.yaml",
+    )
+    parser.add_argument(
+        "--api-url",
+        type=str,
+        help="n8n API URL (overrides env and .n8n-auth)",
+    )
+    parser.add_argument(
+        "--api-key",
+        type=str,
+        help="n8n API key (overrides env and .n8n-auth)",
+    )
+    parser.add_argument(
+        "--repo-root",
+        type=str,
+        default=".",
+        help="Repository root path (default: current directory)",
+    )
+    parser.add_argument(
+        "--insecure",
+        action="store_true",
+        help="Disable SSL certificate verification (for self-signed certificates)",
+    )
+
+
 def main() -> None:
     """Main CLI entrypoint."""
     parser = argparse.ArgumentParser(
@@ -90,32 +124,48 @@ def main() -> None:
     )
     _add_common_args(validate_parser)
 
-    # export command
-    export_parser = subparsers.add_parser(
-        "export",
-        help="Export all workflows from n8n instance (mirror mode)",
+    # configure command
+    configure_parser = subparsers.add_parser(
+        "configure",
+        help="Save a named config profile to .n8n-gitops.yaml",
     )
-    export_parser.add_argument(
+    configure_parser.add_argument(
+        "--config",
+        type=str,
+        required=True,
+        help="Profile name (e.g., dev, staging, prod)",
+    )
+    configure_parser.add_argument(
         "--api-url",
         type=str,
-        help="n8n API URL (overrides env and .n8n-auth)",
+        required=True,
+        help="n8n API URL",
     )
-    export_parser.add_argument(
+    configure_parser.add_argument(
         "--api-key",
         type=str,
-        help="n8n API key (overrides env and .n8n-auth)",
+        required=True,
+        help="n8n API key",
     )
-    export_parser.add_argument(
+    configure_parser.add_argument(
         "--repo-root",
         type=str,
         default=".",
         help="Repository root path (default: current directory)",
     )
-    export_parser.add_argument(
+    configure_parser.add_argument(
         "--insecure",
         action="store_true",
         help="Disable SSL certificate verification (for self-signed certificates)",
     )
+    _add_common_args(configure_parser)
+
+    # export command
+    export_parser = subparsers.add_parser(
+        "export",
+        help="Export all workflows from n8n instance (mirror mode)",
+    )
+    _add_api_args(export_parser)
     _add_common_args(export_parser)
 
     # deploy command
@@ -143,27 +193,7 @@ def main() -> None:
         action="store_true",
         help="Delete workflows in n8n that are not in the manifest",
     )
-    deploy_parser.add_argument(
-        "--api-url",
-        type=str,
-        help="n8n API URL (overrides env and .n8n-auth)",
-    )
-    deploy_parser.add_argument(
-        "--api-key",
-        type=str,
-        help="n8n API key (overrides env and .n8n-auth)",
-    )
-    deploy_parser.add_argument(
-        "--repo-root",
-        type=str,
-        default=".",
-        help="Repository root path (default: current directory)",
-    )
-    deploy_parser.add_argument(
-        "--insecure",
-        action="store_true",
-        help="Disable SSL certificate verification (for self-signed certificates)",
-    )
+    _add_api_args(deploy_parser)
     _add_common_args(deploy_parser)
 
     # rollback command
@@ -182,27 +212,7 @@ def main() -> None:
         action="store_true",
         help="Show what would be deployed without making changes",
     )
-    rollback_parser.add_argument(
-        "--api-url",
-        type=str,
-        help="n8n API URL (overrides env and .n8n-auth)",
-    )
-    rollback_parser.add_argument(
-        "--api-key",
-        type=str,
-        help="n8n API key (overrides env and .n8n-auth)",
-    )
-    rollback_parser.add_argument(
-        "--repo-root",
-        type=str,
-        default=".",
-        help="Repository root path (default: current directory)",
-    )
-    rollback_parser.add_argument(
-        "--insecure",
-        action="store_true",
-        help="Disable SSL certificate verification (for self-signed certificates)",
-    )
+    _add_api_args(rollback_parser)
     _add_common_args(rollback_parser)
 
     args = parser.parse_args()
@@ -215,7 +225,10 @@ def main() -> None:
     logger.configure(silent=args.silent, break_on_error=args.break_on_error)
 
     try:
-        if args.command == "create-project":
+        if args.command == "configure":
+            from n8n_gitops.commands.configure import run_configure
+            run_configure(args)
+        elif args.command == "create-project":
             from n8n_gitops.commands.create_project import run_create_project
             run_create_project(args)
         elif args.command == "validate":
