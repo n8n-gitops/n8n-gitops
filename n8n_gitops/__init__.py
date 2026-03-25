@@ -1,3 +1,5 @@
 """n8n-gitops: GitOps CLI for n8n Community Edition."""
 
-__version__ = "0.3.1"
+from importlib.metadata import version
+
+__version__ = version("n8n-gitops")

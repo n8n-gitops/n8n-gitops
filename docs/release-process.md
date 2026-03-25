@@ -29,20 +29,7 @@ The first release will create the PyPI project. Subsequent releases will publish
 
 ## Release Checklist
 
-### 1. Update Version Number
-
-Update the version in `n8n_gitops/__init__.py`:
-
-```python
-__version__ = "X.Y.Z"  # Update to new version
-```
-
-**Version Format:**
-- **Major (X)**: Breaking changes or major feature releases
-- **Minor (Y)**: New features, backward compatible
-- **Patch (Z)**: Bug fixes, backward compatible
-
-### 2. Update CHANGELOG
+### 1. Update CHANGELOG
 
 Update `CHANGELOG.md` with the new version and release notes:
 
@@ -69,17 +56,17 @@ Update `CHANGELOG.md` with the new version and release notes:
 - Be descriptive and user-focused
 - Include code examples where helpful
 
-### 3. Commit Version Changes
+### 2. Commit Changes
 
 ```bash
-git add n8n_gitops/__init__.py CHANGELOG.md
+git add CHANGELOG.md
 git commit -m "Release vX.Y.Z"
 git push origin main
 ```
 
-### 4. Create Git Tag
+### 3. Create Git Tag
 
-Create an annotated tag with the version number:
+The version is derived automatically from the git tag by `setuptools-scm`. Create an annotated tag with the version number:
 
 ```bash
 git tag -a vX.Y.Z -m "Release vX.Y.Z"
@@ -88,7 +75,7 @@ git push origin vX.Y.Z
 
 **Important:** The tag must follow the format `vX.Y.Z` (with the `v` prefix) to trigger the GitHub Actions workflow.
 
-### 5. Wait for CI Build
+### 4. Wait for CI Build
 
 After pushing the tag:
 
@@ -102,7 +89,7 @@ After pushing the tag:
 4. The package will be automatically published to PyPI
 5. The Linux binary will be uploaded to the GitHub release
 
-### 6. Create GitHub Release
+### 5. Create GitHub Release
 
 #### Option A: Using GitHub Web Interface
 
@@ -152,25 +139,22 @@ After creating the release:
 Here's a complete example for releasing version 0.3.0:
 
 ```bash
-# 1. Update version in n8n_gitops/__init__.py
-# Change: __version__ = "0.3.0"
-
-# 2. Update CHANGELOG.md
+# 1. Update CHANGELOG.md
 # Add section for [0.3.0] with release notes
 
-# 3. Commit changes
-git add n8n_gitops/__init__.py CHANGELOG.md
+# 2. Commit changes
+git add CHANGELOG.md
 git commit -m "Release v0.3.0"
 git push origin main
 
-# 4. Create and push tag
+# 3. Create and push tag (this determines the version)
 git tag -a v0.3.0 -m "Release v0.3.0"
 git push origin v0.3.0
 
-# 5. Wait for GitHub Actions to complete
+# 4. Wait for GitHub Actions to complete
 # Monitor at: https://github.com/YOUR_USERNAME/n8n-gitops/actions
 
-# 6. Create GitHub release
+# 5. Create GitHub release
 gh run download --name n8n-gitops-linux
 gh release create v0.3.0 \
   --title "n8n-gitops v0.3.0" \

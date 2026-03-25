@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel"]
+requires = ["setuptools>=61.0", "setuptools-scm>=8", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "n8n-gitops"
-version = "0.3.3"
+dynamic = ["version"]
 description = "GitOps CLI for n8n Community Edition"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -33,6 +33,10 @@ n8n-gitops = "n8n_gitops.cli:main"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["n8n_gitops*"]
+
+[tool.setuptools_scm]
+version_scheme = "guess-next-dev"
+local_scheme = "no-local-version"
 
 [tool.black]
 line-length = 100
