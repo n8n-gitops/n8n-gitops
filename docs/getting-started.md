@@ -15,6 +15,23 @@ title: Getting Started
 uv tool install n8n-gitops
 ```
 
+### With pipx
+
+[pipx](https://pipx.pypa.io) installs Python CLI tools into isolated environments and makes them available globally for your user without sudo:
+
+```bash
+# Ubuntu/Debian
+sudo apt-get install pipx
+
+# Fedora
+sudo dnf install pipx
+
+# macOS
+brew install pipx
+
+pipx install n8n-gitops
+```
+
 ### With pip (user install, no sudo)
 
 ```bash

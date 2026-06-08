@@ -34,6 +34,9 @@ A GitOps CLI tool for [n8n](https://n8n.io) Community Edition that brings versio
 # Install with uv (recommended — isolated, no sudo)
 uv tool install n8n-gitops
 
+# Or with pipx (Ubuntu/Debian/Fedora/macOS)
+pipx install n8n-gitops
+
 # Or with pip (user install, no sudo)
 pip install --user n8n-gitops
 
