@@ -1,5 +1,6 @@
 """JSON normalization for deterministic output."""
 
+import copy
 import json
 from typing import Any
 
@@ -51,6 +52,27 @@ def normalize_json(obj: Any) -> str:
     return json_str
 
 
+def strip_empty_fields(obj: dict[str, Any], fields: list[str] | None = None) -> dict[str, Any]:
+    """Strip fields whose value is None or an empty collection.
+
+    Use for fields that are meaningful when populated but should not be stored
+    when absent (e.g. meta, pinData, staticData).
+
+    Args:
+        obj: Workflow object to process
+        fields: Fields to check; if None, all keys are checked
+
+    Returns:
+        New dictionary with null/empty fields removed
+    """
+    result = copy.deepcopy(obj)
+    targets = fields if fields is not None else list(result.keys())
+    for field in targets:
+        if result.get(field) in (None, {}, []):
+            result.pop(field, None)
+    return result
+
+
 def strip_volatile_fields(obj: dict[str, Any], fields: list[str] | None = None) -> dict[str, Any]:
     """Strip volatile fields from workflow JSON.
 
@@ -67,11 +89,8 @@ def strip_volatile_fields(obj: dict[str, Any], fields: list[str] | None = None) 
     if fields is None:
         fields = []
 
-    # Create a deep copy to avoid modifying the original
-    import copy
     result = copy.deepcopy(obj)
 
-    # Remove top-level fields
     for field in fields:
         if field in result:
             del result[field]

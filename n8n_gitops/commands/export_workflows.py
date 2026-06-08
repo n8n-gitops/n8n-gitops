@@ -13,7 +13,7 @@ from n8n_gitops.config import load_auth
 from n8n_gitops.gitref import WorkingTreeSnapshot
 from n8n_gitops.manifest import load_manifest
 from n8n_gitops.n8n_client import N8nClient
-from n8n_gitops.normalize import normalize_json, strip_volatile_fields
+from n8n_gitops.normalize import normalize_json, strip_empty_fields, strip_volatile_fields
 from n8n_gitops.render import CODE_FIELD_NAMES
 
 # Node types that never require credentials
@@ -306,8 +306,9 @@ def _export_single_workflow(
     workflow_cleaned = strip_volatile_fields(
         workflow,
         fields=["id", "createdAt", "updatedAt", "versionId", "shared", "isArchived",
-                "triggerCount", "activeVersionId", "versionCounter"],
+                "triggerCount", "activeVersionId", "versionCounter", "nodeGroups"],
     )
+    workflow_cleaned = strip_empty_fields(workflow_cleaned, fields=["meta", "pinData", "staticData"])
 
     # Externalize code if enabled
     externalized_count = 0
