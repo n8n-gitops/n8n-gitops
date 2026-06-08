@@ -1,0 +1,36 @@
+name: n8n Scheduled Sync
+
+on:
+  schedule:
+    - cron: '0 2 * * *'   # daily at 02:00 UTC
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GH_PAT }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install n8n-gitops
+        run: pip install n8n-gitops
+
+      - name: Sync workflows from n8n
+        run: n8n-gitops export --repo-root .
+        env:
+          N8N_BASE_URL: ${{ secrets.N8N_BASE_URL }}
+          N8N_API_KEY:  ${{ secrets.N8N_API_KEY }}
+
+      - name: Commit and push
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add n8n/
+          git diff --cached --quiet || git commit -m 'chore: sync workflows [skip ci]'
+          git push

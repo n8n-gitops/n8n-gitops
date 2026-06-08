@@ -1,0 +1,183 @@
+{
+  "active": false,
+  "activeVersion": null,
+  "connections": {
+    "Create Sample Data": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Deduplicate Users",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Deduplicate Users": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Display Results",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "When clicking 'Test workflow'": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Create Sample Data",
+            "type": "main"
+          }
+        ]
+      ]
+    }
+  },
+  "description": null,
+  "meta": null,
+  "name": "Deduplicate data records using JavaScript array methods",
+  "nodes": [
+    {
+      "id": "3406d256-497f-44c0-b1ed-b9ce739b769f",
+      "name": "When clicking 'Test workflow'",
+      "parameters": {},
+      "position": [
+        240,
+        352
+      ],
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1
+    },
+    {
+      "id": "b80099d0-5b0d-4655-b465-9e33aff38935",
+      "name": "Sticky Note",
+      "parameters": {
+        "color": 7,
+        "content": "# 🧱 Data Deduplication Tutorial\n\n**Author:** David Olusola\n\n## 🚀 n8n Coaching\nUnlock the full potential of n8n with personalized, one-on-one coaching. Whether you're just getting started or need help solving a specific challenge, I'll guide you step-by-step so you can build confidently and efficiently.\n\n👉 [Book Coaching Session](mailto:david@daexai.com?subject=n8n%20Coaching%20Request)\n\n## 🔧 n8n Consulting\nHave a complex automation project, unique integration needs, or want a custom workflow built from scratch? Let's collaborate to design and implement a robust solution tailored to your business.\n\n📩 [Inquire About Consulting Services](mailto:david@daexai.com?subject=n8n%20Consultation%20Request)",
+        "height": 580,
+        "width": 400
+      },
+      "position": [
+        0,
+        0
+      ],
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1
+    },
+    {
+      "id": "672cd83d-b1b3-4ed6-a74f-a335e70ce70c",
+      "name": "Sticky Note1",
+      "parameters": {
+        "color": 7,
+        "content": "## 📊 Sample Data\n\nThis node creates sample user data with intentional duplicates based on email addresses.\n\n**What it does:**\n- Creates an array of users\n- Includes duplicate entries (same email)\n- Simulates real-world messy data\n\n**Next Step:** Pass this data to the deduplication code node",
+        "height": 360,
+        "width": 300
+      },
+      "position": [
+        432,
+        480
+      ],
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1
+    },
+    {
+      "id": "eae7602a-7473-4987-a0d2-c7057f9801e5",
+      "name": "Sticky Note2",
+      "parameters": {
+        "color": 7,
+        "content": "## 🧹 Deduplication Logic\n\n**Key Concepts:**\n- `filter()` - Creates new array with filtered elements\n- `findIndex()` - Returns index of first matching element\n- `index === self.findIndex()` - Keeps only first occurrence\n\n**Algorithm:**\n1. Parse JSON data\n2. Filter array keeping first occurrence of each email\n3. Transform back to n8n format\n4. Return deduplicated results",
+        "height": 380,
+        "width": 300
+      },
+      "position": [
+        768,
+        480
+      ],
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1
+    },
+    {
+      "id": "5230f327-7f38-4996-abe9-fccc78ab0b54",
+      "name": "Sticky Note3",
+      "parameters": {
+        "color": 7,
+        "content": "## 📈 Results\n\n**What you'll see:**\n- Original count: 6 items\n- Deduplicated count: 4 items\n- Duplicates removed: 2 items\n\n**Use Cases:**\n- Clean data before CRM import\n- Prevent duplicate database entries\n- Data quality improvement\n- ETL pipeline cleanup",
+        "height": 380,
+        "width": 300
+      },
+      "position": [
+        1120,
+        480
+      ],
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1
+    },
+    {
+      "id": "265e3249-7f4a-4cff-b08e-16f046af0577",
+      "name": "Create Sample Data",
+      "parameters": {
+        "jsCode": "@@n8n-gitops:include scripts/Deduplicate_data_records_using_JavaScript_array_methods/Create_Sample_Data.js"
+      },
+      "position": [
+        464,
+        352
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "id": "014a7389-4c51-4cdf-bfbd-cce3b08fb82b",
+      "name": "Deduplicate Users",
+      "parameters": {
+        "jsCode": "@@n8n-gitops:include scripts/Deduplicate_data_records_using_JavaScript_array_methods/Deduplicate_Users.js"
+      },
+      "position": [
+        800,
+        352
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "id": "e257e28b-3e3b-4996-9423-141e20faad7c",
+      "name": "Display Results",
+      "parameters": {
+        "jsCode": "@@n8n-gitops:include scripts/Deduplicate_data_records_using_JavaScript_array_methods/Display_Results.js"
+      },
+      "position": [
+        1168,
+        352
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "id": "4f105f21-929b-43c6-941e-5e2a073ead3a",
+      "name": "Sticky Note4",
+      "parameters": {
+        "color": 7,
+        "content": "## 🎯 Learning Objectives\n\n**After this tutorial you'll understand:**\n\n✅ How to use JavaScript array methods in n8n\n✅ Data deduplication techniques\n✅ Working with JSON data in Code nodes\n✅ Transforming data between n8n items\n✅ Practical use cases for data cleaning\n\n**Best Practices:**\n- Always validate input data\n- Consider performance for large datasets\n- Test with various duplicate scenarios\n- Add error handling for production use",
+        "height": 330,
+        "width": 430
+      },
+      "position": [
+        528,
+        32
+      ],
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1
+    }
+  ],
+  "pinData": {},
+  "settings": {
+    "availableInMCP": false,
+    "binaryMode": "separate",
+    "callerPolicy": "workflowsFromSameOwner",
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": []
+}

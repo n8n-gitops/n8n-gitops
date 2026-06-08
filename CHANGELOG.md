@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.4.0] - 2026-06-08
+
+### Added
+
+- **`install-hooks` command** — one-step git hook setup for automated GitOps workflow
+  - Prompts interactively for config profile name, API URL, and API key if not provided as flags
+  - Saves config profile to `.n8n-gitops.yaml` (same as `configure`)
+  - Adds `.n8n-gitops.yaml` to `.gitignore` and stages it automatically
+  - Installs `pre-commit` hook: exports workflows from n8n before each commit; aborts and stages changes if export produces unstaged files
+  - Installs `post-merge` hook: deploys workflows to n8n after each `git pull`
+  - Runs `n8n-gitops deploy --prune` immediately if `n8n/` directory already exists
+  - `--force` flag to overwrite existing hooks
+
+### Fixed
+
+- **Strip `nodeGroups` field before deploy** — n8n exports this field in workflow JSON but the public API rejects it with HTTP 400 (`additionalProperties: false`)
+
+### Documentation
+
+- Updated `getting-started.md` installation section with PyPI, `uv tool install`, `pip install --user`, and virtual environment options
+- Added `install-hooks` to `commands.md` reference with full usage, options, and hook behaviour
+- Updated `README.md` Quick Start and Commands section to reflect `install-hooks` and correct install instructions
+
 ## [0.3.3] - 2026-03-22
 
 ### Changed

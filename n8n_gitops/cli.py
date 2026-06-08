@@ -191,6 +191,44 @@ def main() -> None:
     _add_api_args(deploy_parser)
     _add_common_args(deploy_parser)
 
+    # install-hooks command
+    install_hooks_parser = subparsers.add_parser(
+        "install-hooks",
+        help="Install git hooks for automatic export (pre-commit) and deploy (post-merge)",
+    )
+    install_hooks_parser.add_argument(
+        "--config",
+        type=str,
+        help="Config profile name (e.g. dev, staging, prod) — prompted if omitted",
+    )
+    install_hooks_parser.add_argument(
+        "--api-url",
+        type=str,
+        help="n8n API URL — prompted if omitted",
+    )
+    install_hooks_parser.add_argument(
+        "--api-key",
+        type=str,
+        help="n8n API key — prompted if omitted",
+    )
+    install_hooks_parser.add_argument(
+        "--repo-root",
+        type=str,
+        default=".",
+        help="Repository root path (default: current directory)",
+    )
+    install_hooks_parser.add_argument(
+        "--insecure",
+        action="store_true",
+        help="Disable SSL certificate verification (for self-signed certificates)",
+    )
+    install_hooks_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite existing hooks",
+    )
+    _add_common_args(install_hooks_parser)
+
     # rollback command
     rollback_parser = subparsers.add_parser(
         "rollback",
@@ -223,6 +261,9 @@ def main() -> None:
         if args.command == "configure":
             from n8n_gitops.commands.configure import run_configure
             run_configure(args)
+        elif args.command == "install-hooks":
+            from n8n_gitops.commands.install_hooks import run_install_hooks
+            run_install_hooks(args)
         elif args.command == "create-project":
             from n8n_gitops.commands.create_project import run_create_project
             run_create_project(args)

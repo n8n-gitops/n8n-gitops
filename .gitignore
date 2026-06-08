@@ -43,7 +43,9 @@ htmlcov/
 # n8n-gitops specific
 .n8n-auth
 .env
+.n8n-gitops.yaml
 
 # OS
 .DS_Store
 Thumbs.db
+
