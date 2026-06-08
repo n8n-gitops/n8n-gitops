@@ -7,14 +7,46 @@ title: Getting Started
 
 ## Installation
 
+### With uv (recommended)
+
+[uv](https://github.com/astral-sh/uv) is the recommended way to install CLI tools — it creates an isolated environment automatically and makes the command available globally for your user without requiring sudo:
+
 ```bash
+uv tool install n8n-gitops
+```
+
+### With pip (user install, no sudo)
+
+```bash
+pip install --user n8n-gitops
+```
+
+This installs to `~/.local/` and does not require sudo. Make sure `~/.local/bin` is in your `PATH`.
+
+> **Note:** Running `pip install n8n-gitops` without `--user` installs into the system Python and typically requires `sudo`. Prefer `--user` or a virtual environment to avoid that.
+
+### In a virtual environment
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install n8n-gitops
+```
+
+### From source
+
+```bash
+git clone https://github.com/n8n-gitops/n8n-gitops.git
+cd n8n-gitops
 pip install -e .
 ```
 
-Or for development:
+For development (includes test and lint tools):
 
 ```bash
 pip install -e ".[dev]"
+# or with uv
+uv sync --dev
 ```
 
 ## Quick Start

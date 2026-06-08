@@ -1,0 +1,38 @@
+name: n8n Drift Detection
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'  # every 6 hours
+  workflow_dispatch:
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install n8n-gitops
+        run: pip install n8n-gitops
+
+      - name: Export current n8n state
+        run: n8n-gitops export --repo-root .
+        env:
+          N8N_BASE_URL: ${{ secrets.N8N_BASE_URL }}
+          N8N_API_KEY:  ${{ secrets.N8N_API_KEY }}
+
+      - name: Check for drift
+        run: |
+          if ! git diff --quiet n8n/; then
+            echo "::error::Drift detected: n8n instance does not match Git state"
+            echo ""
+            git diff --stat n8n/
+            echo ""
+            git diff n8n/
+            exit 1
+          fi
+          echo "No drift detected. n8n instance matches Git state."

@@ -1,0 +1,35 @@
+name: n8n Deploy on Tag
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install n8n-gitops
+        run: pip install n8n-gitops
+
+      - name: Validate before deploy
+        run: n8n-gitops validate --strict
+        env:
+          N8N_BASE_URL: ${{ secrets.N8N_BASE_URL }}
+          N8N_API_KEY:  ${{ secrets.N8N_API_KEY }}
+
+      - name: Deploy workflows
+        run: n8n-gitops deploy --git-ref ${{ github.ref_name }}
+        env:
+          N8N_BASE_URL: ${{ secrets.N8N_BASE_URL }}
+          N8N_API_KEY:  ${{ secrets.N8N_API_KEY }}

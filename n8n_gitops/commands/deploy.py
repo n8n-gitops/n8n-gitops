@@ -500,6 +500,7 @@ def _prepare_workflow_for_api(workflow: dict[str, Any]) -> dict[str, Any]:
         "activeVersionId",  # Active version ID (n8n v2)
         "versionCounter",   # Version counter (n8n v2)
         "description",      # Description (not accepted in POST)
+        "nodeGroups",       # Node groups (not accepted by API)
     ]
 
     for field in fields_to_remove:

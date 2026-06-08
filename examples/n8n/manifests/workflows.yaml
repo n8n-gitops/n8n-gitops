@@ -1,0 +1,16 @@
+externalize_code: true
+tags: []
+workflows:
+- name: Build your own PostgreSQL MCP server
+  active: false
+  tags: []
+- name: Deduplicate data records using JavaScript array methods
+  active: false
+  tags: []
+- name: 'JavaScriptSentry: detect sensitive information in JavaScript'
+  active: false
+  tags: []
+- name: "\u2728\U0001F916Automated AI Powered Social Media Content Factory for  X\
+    \ + Facebook + Instagram + LinkedIn"
+  active: false
+  tags: []

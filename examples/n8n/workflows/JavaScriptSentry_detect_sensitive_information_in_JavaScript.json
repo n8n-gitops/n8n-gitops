@@ -1,0 +1,330 @@
+{
+  "active": false,
+  "activeVersion": null,
+  "connections": {
+    "Aggregate1": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Data Mapper1",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Data Mapper1": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "JavaScript Search Agent w/Email Template1",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Format Report for Email1": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Send a message1",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "JavaScript Extractor1": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Aggregate1",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "JavaScript Search Agent w/Email Template1": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Format Report for Email1",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "Landing Page Url1": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "Puppeteer1",
+            "type": "main"
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "index": 0,
+            "node": "JavaScript Search Agent w/Email Template1",
+            "type": "ai_languageModel"
+          }
+        ]
+      ]
+    },
+    "Puppeteer1": {
+      "main": [
+        [
+          {
+            "index": 0,
+            "node": "JavaScript Extractor1",
+            "type": "main"
+          }
+        ]
+      ]
+    }
+  },
+  "description": null,
+  "meta": null,
+  "name": "JavaScriptSentry: detect sensitive information in JavaScript",
+  "nodes": [
+    {
+      "id": "95ca5be4-f442-4e54-aa9f-08562ac6429b",
+      "name": "Sticky Note",
+      "parameters": {
+        "content": "## JavaScript Scan and Email Template\nThis node will assess all gathered JavaScripts for sensitive information such as API keys, email addresses, and PII. It will then prepare the results for email so be sure to modify the to/from.",
+        "height": 200,
+        "width": 320
+      },
+      "position": [
+        0,
+        0
+      ],
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1
+    },
+    {
+      "id": "284f9c4c-c9fb-4390-a320-8df75851ee48",
+      "name": "Sticky Note1",
+      "parameters": {
+        "content": "## Gmail Instructions\nBe sure to add your OAuth and then add an email address to send the results to."
+      },
+      "position": [
+        480,
+        48
+      ],
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1
+    },
+    {
+      "id": "7d3d0670-1c69-461b-adcb-17d16fa9851a",
+      "name": "Sticky Note2",
+      "parameters": {
+        "content": "## Target URL\nClick Execute workflow and visit the 'Form Trigger' URL and fill out the form to begin the search."
+      },
+      "position": [
+        -1088,
+        48
+      ],
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1
+    },
+    {
+      "id": "a38a3ff2-caae-46f2-a0a0-d8d945a4af21",
+      "name": "Sticky Note3",
+      "parameters": {
+        "content": "## Puppeteer\nBe sure to have Puppeteer installed. You can do this in Settings/Community Nodes"
+      },
+      "position": [
+        -800,
+        48
+      ],
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1
+    },
+    {
+      "id": "fee4b355-f0fc-4ac8-b9f0-1561ddbd46b1",
+      "name": "Sticky Note4",
+      "parameters": {
+        "content": "## JavaScript Crawler",
+        "height": 80
+      },
+      "position": [
+        -448,
+        112
+      ],
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1
+    },
+    {
+      "id": "6abdc220-ca6d-4c5f-92bd-2ece1f236e32",
+      "name": "Landing Page Url1",
+      "parameters": {
+        "formDescription": "Check your website for security vulnerabilities and get a detailed report",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Landing Page Url",
+              "placeholder": "https://example.com",
+              "requiredField": true
+            }
+          ]
+        },
+        "formTitle": "Website Security Scanner",
+        "options": {}
+      },
+      "position": [
+        -944,
+        240
+      ],
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "webhookId": "cdf06f5a-a982-4e27-9827-0799fa671b81"
+    },
+    {
+      "id": "ea5f7052-3e99-4cf0-bb09-3b2e397156b6",
+      "name": "Puppeteer1",
+      "parameters": {
+        "options": {
+          "waitUntil": "networkidle2"
+        },
+        "url": "={{ $json['Landing Page Url'] }}"
+      },
+      "position": [
+        -736,
+        240
+      ],
+      "type": "n8n-nodes-puppeteer.puppeteer",
+      "typeVersion": 1
+    },
+    {
+      "id": "cdb731b5-64ff-4cdb-9fd7-1dc03b546a79",
+      "name": "JavaScript Extractor1",
+      "parameters": {
+        "jsCode": "@@n8n-gitops:include scripts/JavaScriptSentry_detect_sensitive_information_in_JavaScript/JavaScript_Extractor1.js"
+      },
+      "position": [
+        -528,
+        240
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "id": "6738d350-d6a1-459d-b590-e20bf7f9dcaf",
+      "name": "Aggregate1",
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "options": {}
+      },
+      "position": [
+        -304,
+        240
+      ],
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1
+    },
+    {
+      "id": "2981ef71-9de4-451e-9aa8-85ea32e6974a",
+      "name": "Data Mapper1",
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "data[0]",
+              "type": "object",
+              "value": "={{ $json.data[0] }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "position": [
+        -80,
+        240
+      ],
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4
+    },
+    {
+      "id": "b200e15f-d7a7-4422-b9af-d5f95cc51c58",
+      "name": "Format Report for Email1",
+      "parameters": {
+        "jsCode": "@@n8n-gitops:include scripts/JavaScriptSentry_detect_sensitive_information_in_JavaScript/Format_Report_for_Email1.js"
+      },
+      "position": [
+        352,
+        240
+      ],
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2
+    },
+    {
+      "id": "9c2d170c-7efd-401b-8241-ee6c7a465891",
+      "name": "Send a message1",
+      "parameters": {
+        "message": "={{ $json.htmlReport }}",
+        "options": {
+          "senderName": "n8n"
+        },
+        "sendTo": "admin@example.com",
+        "subject": "Static subject (edit manually)"
+      },
+      "position": [
+        544,
+        240
+      ],
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "webhookId": "a9f5eae2-5ae7-447a-9572-659ab7db4303"
+    },
+    {
+      "id": "13aadb7e-0bb4-4650-9a61-cab84a1795ed",
+      "name": "OpenAI Chat Model",
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "position": [
+        112,
+        432
+      ],
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2
+    },
+    {
+      "id": "40955b54-4851-47e6-b22b-0a7d71b8ea55",
+      "name": "JavaScript Search Agent w/Email Template1",
+      "parameters": {
+        "options": {},
+        "promptType": "define",
+        "text": "=You are a cybersecurity expert supporting an ethical hacker in a security assessment of the website {{ $('Landing Page Url1').item.json['Landing Page Url'] }}. Your task is to analyze the content of JavaScript files listed in the input data: {{ JSON.stringify($input.all()) }}. Include only URLs with a 'JavaScript' category or ending in '.js' that originate from the domain of the searched website ({{ $('Landing Page Url1').item.json['Landing Page Url'] }}). For each relevant JavaScript file, use the provided content in the 'body' field to check for sensitive information, such as API keys (e.g., 'api_key', 'x-api-token'), email addresses (e.g., 'user@example.com'), personal names (e.g., 'adminUser'), and configuration details (e.g., endpoints like 'https://api.example.com'). \n\nGenerate a professionally formatted email summarizing the findings, addressed to User and signed by Admin. The email should include:\n- The assessed website: {{ $('Landing Page Url1').item.json['Landing Page Url'] }}.\n- A numbered list of JavaScript URLs from the target domain, each with:\n  - Sensitive data found (e.g., type and keywords, not full content).\n  - A concise, actionable recommendation (e.g., relocate hardcoded credentials to a secure vault).\n- For URLs with no sensitive data, state \"No sensitive data identified\" and recommend ongoing monitoring.\n- If no relevant JavaScript URLs are found, explicitly state: \"No JavaScript files from the target domain were identified.\"\n\nDo not include the full content of the JavaScript files or these instructions. Format the output as a plain text email for use in a subsequent email node, following this structure:\n\nSubject: Security Assessment: JavaScript Files for {{ $('Landing Page Url1').item.json['Landing Page Url'] }}\n\nDear User,\n\nAs part of a security assessment for {{ $('Landing Page Url1').item.json['Landing Page Url'] }}, I analyzed the JavaScript files linked from the website to identify potential sensitive information exposures. Below is a summary of the findings, detailing any sensitive data detected in JavaScript files from the target domain, along with remediation recommendations.\n\nFindings:\n1. [URL]\n   - Sensitive Data: [Type, e.g., API Key ('api_key'), Email ('user@example.com')]\n   - Recommendation: [Action, e.g., Relocate hardcoded credentials to a secure vault]\n2. [URL]\n   - Sensitive Data: [Type or \"No sensitive data identified\"]\n   - Recommendation: [Action or \"Continue monitoring for changes\"]\n\nNext Steps:\nPlease review the listed JavaScript files for the identified keywords and implement the recommended actions to mitigate security risks. Contact me for further assistance or to discuss remediation strategies.\n\nBest regards,\nAdmin\n\nHere are the links:\n{{ $('Aggregate1').item.json.data[0].URL }}\n{{ $('Aggregate1').item.json.data[1].URL }}\n{{ $('Aggregate1').item.json.data[2].URL }}\n{{ $('Aggregate1').item.json.data[3].URL }}\n{{ $('Aggregate1').item.json.data[4].URL }}\n{{ $('Aggregate1').item.json.data[5].URL }}\n{{ $('Aggregate1').item.json.data[6].URL }}\n{{ $('Aggregate1').item.json.data[7].URL }}\n{{ $('Aggregate1').item.json.data[8].URL }}\n{{ $('Aggregate1').item.json.data[9].URL }}\n{{ $('Aggregate1').item.json.data[10].URL }}\n{{ $('Aggregate1').item.json.data[11].URL }}\n{{ $('Aggregate1').item.json.data[12].URL }}\n{{ $('Aggregate1').item.json.data[13].URL }}\n{{ $('Aggregate1').item.json.data[14].URL }}\n{{ $('Aggregate1').item.json.data[15].URL }}\n{{ $('Aggregate1').item.json.data[16].URL }}\n{{ $('Aggregate1').item.json.data[17].URL }}\n{{ $('Aggregate1').item.json.data[18].URL }}\n{{ $('Aggregate1').item.json.data[19].URL }}\n{{ $('Aggregate1').item.json.data[20].URL }}\n{{ $('Aggregate1').item.json.data[21].URL }}\n{{ $('Aggregate1').item.json.data[22].URL }}\n{{ $('Aggregate1').item.json.data[23].URL }}\n{{ $('Aggregate1').item.json.data[24].URL }}\n{{ $('Aggregate1').item.json.data[25].URL }}\n{{ $('Aggregate1').item.json.data[26].URL }}\n{{ $('Aggregate1').item.json.data[27].URL }}\n{{ $('Aggregate1').item.json.data[28].URL }}\n{{ $('Aggregate1').item.json.data[29].URL }}\n{{ $('Aggregate1').item.json.data[30].URL }}\n{{ $('Aggregate1').item.json.data[31].URL }}\n{{ $('Aggregate1').item.json.data[32].URL }}"
+      },
+      "position": [
+        64,
+        272
+      ],
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2
+    }
+  ],
+  "pinData": null,
+  "settings": {
+    "availableInMCP": false,
+    "callerPolicy": "workflowsFromSameOwner",
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": []
+}

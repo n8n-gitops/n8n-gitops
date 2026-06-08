@@ -63,6 +63,93 @@ prod:
 
 ---
 
+## install-hooks
+
+Install git hooks that automatically export workflows before each commit and deploy them after each pull.
+
+### Usage
+
+```bash
+n8n-gitops install-hooks [--config NAME] [--api-url URL] [--api-key KEY] [--repo-root PATH] [--insecure] [--force]
+```
+
+### Options
+
+- `--config NAME` - Config profile name (e.g., dev, staging, prod) — prompted interactively if omitted
+- `--api-url URL` - n8n API URL — prompted interactively if omitted
+- `--api-key KEY` - n8n API key — prompted interactively if omitted (input is hidden)
+- `--repo-root PATH` - Repository root path (default: current directory)
+- `--insecure` - Disable SSL certificate verification
+- `--force` - Overwrite existing hooks
+
+### What it does
+
+1. Saves the config profile to `.n8n-gitops.yaml` (same as `configure`)
+2. Adds `.n8n-gitops.yaml` to `.gitignore` (protects API key from being committed) and stages it
+3. Installs a **`pre-commit`** hook — runs `n8n-gitops export` before every commit
+4. Installs a **`post-merge`** hook — runs `n8n-gitops deploy` after every `git pull`
+5. If an `n8n/` directory already exists, runs `n8n-gitops deploy --prune` immediately
+
+### Examples
+
+```bash
+# Interactive setup (prompts for all values)
+n8n-gitops install-hooks
+
+# Non-interactive setup
+n8n-gitops install-hooks \
+  --config dev \
+  --api-url https://n8n.example.com \
+  --api-key abc123
+
+# Overwrite existing hooks
+n8n-gitops install-hooks --config dev --api-url ... --api-key ... --force
+```
+
+### Hook behaviour
+
+**`pre-commit`** (runs before `git commit`):
+
+- Exports all workflows from n8n to the local `n8n/` directory
+- If the export produces new or modified files that are not yet staged, the commit is **aborted** with instructions to stage them:
+
+  ```
+  n8n-gitops: workflows were exported and have unstaged changes.
+  Stage them and commit again:
+
+    git add n8n/
+    git commit
+  ```
+
+- On the second `git commit` (after staging), the commit proceeds normally.
+
+**`post-merge`** (runs after `git pull` / `git merge`):
+
+- Deploys the merged workflows to n8n automatically.
+- To trigger a deploy without a pull (e.g. right after installing hooks), run the hook directly:
+
+  ```bash
+  .git/hooks/post-merge
+  # or equivalently:
+  n8n-gitops deploy --config <name>
+  ```
+
+### Typical workflow after install
+
+```bash
+# Edit workflows in n8n, then commit:
+git commit -m "Update workflows"
+# → export runs, if new files: stage and commit again
+git add n8n/
+git commit -m "Update workflows"
+
+# Pull changes from teammates:
+git pull
+# → deploy runs automatically after merge
+```
+
+---
+
 ## create-project
 
 Create a new n8n-gitops project structure.
