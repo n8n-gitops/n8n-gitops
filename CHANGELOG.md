@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.4.1] - 2026-06-09
+
+### Fixed
+
+- **Strip `meta`, `pinData`, `staticData` during export** — n8n returns these fields as null/empty but `validate --strict` and `deploy` expect them absent; export now cleans them before saving
+
+### Added
+
+- **`strip_empty_fields()`** in `normalize.py` — removes fields whose value is `None` or an empty collection; used by export to produce clean workflow JSON
+
+### Documentation
+
+- Added `pipx` installation instructions for Ubuntu/Debian, Fedora, and macOS
+
+---
+
 ## [0.4.0] - 2026-06-08
 
 ### Added
