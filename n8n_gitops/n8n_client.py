@@ -205,7 +205,7 @@ class N8nClient:
         raise APIError(f"Request failed after {self.max_retries} retries")
 
     def list_workflows(self) -> list[dict[str, Any]]:
-        """List all workflows.
+        """List all workflows with pagination support.
 
         Returns:
             List of workflow objects
@@ -213,13 +213,34 @@ class N8nClient:
         Raises:
             APIError: If request fails
         """
-        result = self._request("GET", "/api/v1/workflows")
-        if isinstance(result, list):
-            return result
-        # Some n8n versions wrap results in data
-        if isinstance(result, dict) and "data" in result:
-            return result["data"]
-        return []
+        all_workflows: list[dict[str, Any]] = []
+        cursor: str | None = ""
+
+        # Paginate through all workflows
+        while cursor is not None:
+            params = {"limit": 100}
+            if cursor:
+                params["cursor"] = cursor
+
+            result = self._request("GET", "/api/v1/workflows", params=params)
+
+            if isinstance(result, dict):
+                # Extract workflows from data field
+                workflows = result.get("data", [])
+                if isinstance(workflows, list):
+                    all_workflows.extend(workflows)
+
+                # Get next cursor for pagination
+                cursor = result.get("nextCursor")
+            elif isinstance(result, list):
+                # Fallback for older n8n versions that return list directly
+                all_workflows.extend(result)
+                cursor = None
+            else:
+                # No more data
+                cursor = None
+
+        return all_workflows
 
     def get_workflow(self, workflow_id: str) -> dict[str, Any]:
         """Get a specific workflow by ID.
