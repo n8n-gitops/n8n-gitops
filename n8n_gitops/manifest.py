@@ -17,6 +17,7 @@ class WorkflowSpec:
     """Workflow specification from manifest."""
     name: str
     active: bool = False
+    is_archived: bool = False
     tags: list[str] = field(default_factory=list)
     requires_credentials: list[str] = field(default_factory=list)
     requires_env: list[str] = field(default_factory=list)
@@ -169,6 +170,11 @@ def _parse_workflow_spec(
     if not isinstance(active, bool):
         raise ManifestError(f"Workflow entry {idx} ('{name}'): 'active' must be a boolean")
 
+    # Parse is_archived field
+    is_archived = workflow_data.get("is_archived", False)
+    if not isinstance(is_archived, bool):
+        raise ManifestError(f"Workflow entry {idx} ('{name}'): 'is_archived' must be a boolean")
+
     # Parse tags field
     tags = workflow_data.get("tags", [])
     _validate_workflow_field_list("tags", tags, idx, name)
@@ -184,6 +190,7 @@ def _parse_workflow_spec(
     return WorkflowSpec(
         name=name,
         active=active,
+        is_archived=is_archived,
         tags=tags,
         requires_credentials=requires_credentials,
         requires_env=requires_env,

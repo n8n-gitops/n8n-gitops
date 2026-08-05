@@ -147,3 +147,32 @@ def load_auth(repo_root: Path, args: Optional[object] = None) -> AuthConfig:
         )
 
     return AuthConfig(api_url=api_url, api_key=api_key, insecure=insecure)
+
+
+def resolve_skip_archived(repo_root: Path, args: Optional[object] = None) -> bool:
+    """Resolve whether archived workflows should be skipped during export.
+
+    Priority order:
+    1. --skip-archived CLI flag
+    2. skip_archived setting in the active config profile (--config name)
+    3. False (export archived workflows, matching prior default behavior)
+
+    Args:
+        repo_root: Path to the repository root
+        args: CLI arguments namespace
+
+    Returns:
+        True if archived workflows should be excluded from export
+    """
+    if args and getattr(args, "skip_archived", None):
+        return True
+
+    config_name = getattr(args, "config", None) if args else None
+    if config_name:
+        try:
+            profile = load_config_profile(repo_root, config_name)
+        except ConfigError:
+            return False
+        return bool(profile.get("skip_archived", False))
+
+    return False
