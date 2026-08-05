@@ -33,6 +33,31 @@ Code externalization is controlled by the `externalize_code` flag in `n8n/manife
 
 Adjust the manifest before running `n8n-gitops export` to switch modes.
 
+## Archived Workflows {#skip-archived}
+
+By default, mirror mode exports archived workflows just like any other workflow — each gets a workflow file and a manifest entry with `is_archived: true` so the state is visible in git (see [Manifest File](manifest.md#is_archived-optional-default-false)).
+
+To exclude archived workflows from export entirely, opt in with `--skip-archived`:
+
+```bash
+n8n-gitops export --skip-archived
+```
+
+Or set it as the default for a config profile in `.n8n-gitops.yaml` so you don't have to pass the flag every time:
+
+```yaml
+prod:
+  api_url: https://prod.example.com
+  api_key: ...
+  skip_archived: true
+```
+
+```bash
+n8n-gitops export --config prod   # archived workflows excluded automatically
+```
+
+The CLI flag takes priority over the profile setting. This is opt-in only — omitting both leaves the default (unchanged) behavior of exporting archived workflows.
+
 ## Examples
 
 ### Basic Export
@@ -93,6 +118,7 @@ The manifest file `n8n/manifests/workflows.yaml` is updated with:
 - Workflow names
 - File paths (relative to `n8n/`)
 - Active state
+- Archived state (`is_archived`)
 - Tags
 
 Example:
@@ -101,12 +127,14 @@ workflows:
   - name: "Payment Processing"
     file: "workflows/payment-processing.json"
     active: true
+    is_archived: false
     tags:
       - production
       - payments
   - name: "Data Sync"
     file: "workflows/data-sync.json"
     active: false
+    is_archived: false
     tags: []
 ```
 

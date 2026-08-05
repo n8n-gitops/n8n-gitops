@@ -165,6 +165,16 @@ def main() -> None:
         "export",
         help="Export all workflows from n8n instance (mirror mode)",
     )
+    export_parser.add_argument(
+        "--skip-archived",
+        action="store_true",
+        default=None,
+        help=(
+            "Exclude archived workflows from export. Overrides the 'skip_archived' "
+            "setting in the config profile (--config), if any. Default: archived "
+            "workflows are exported like any other."
+        ),
+    )
     _add_api_args(export_parser)
     _add_common_args(export_parser)
 

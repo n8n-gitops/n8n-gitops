@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- **`--skip-archived` export flag** — excludes archived workflows from export. Opt-in only (default behavior is unchanged: archived workflows are still exported like any other). Can also be set as `skip_archived: true` in a named config profile (`.n8n-gitops.yaml`); the CLI flag takes priority over the profile setting.
+- **`is_archived` field in the manifest** — each workflow entry in `n8n/manifests/workflows.yaml` now records whether it was archived in n8n at export time (defaults to `false` when absent, so existing manifests remain valid).
+
 ## [0.4.1] - 2026-06-09
 
 ### Fixed
