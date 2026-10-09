@@ -9,6 +9,7 @@ A GitOps CLI tool for [n8n](https://n8n.io) Community Edition that brings versio
 
 [![Sponsor](https://img.shields.io/badge/Sponsor-%23ea4aaa?logo=githubsponsors&logoColor=white&labelColor=0d1117)](https://github.com/sponsors/byjg)
 [![Opensource ByJG](https://img.shields.io/badge/opensource-byjg-success.svg)](http://opensource.byjg.com)
+[![Install MCP Server](https://img.shields.io/badge/Install-MCP_Server-8A2BE2?logo=modelcontextprotocol&logoColor=white)](https://opensource.byjg.com/docs/ai/mcpserver-byjg-docs/)
 [![Build Status](https://github.com/n8n-gitops/n8n-gitops/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/n8n-gitops/n8n-gitops/actions/workflows/build.yml)
 [![GitHub source](https://img.shields.io/badge/Github-source-informational?logo=github)](https://github.com/n8n-gitops/n8n-gitops/)
 [![GitHub license](https://img.shields.io/github/license/n8n-gitops/n8n-gitops.svg)](https://opensource.byjg.com/opensource/licensing.html)
