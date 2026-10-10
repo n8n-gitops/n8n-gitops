@@ -159,6 +159,44 @@ def _fetch_workflows(client: N8nClient) -> list[dict[str, Any]]:
     return remote_workflows
 
 
+def _check_filename_collisions(workflows: list[dict[str, Any]]) -> None:
+    """Verify no two workflows sanitize to the same export filename.
+
+    Mirror-mode export writes one file per workflow name; if two workflows
+    collide on the same sanitized filename, the second write silently
+    overwrites the first with no indication a workflow went missing.
+
+    Args:
+        workflows: List of workflow summaries from list_workflows()
+
+    Raises:
+        SystemExit: If any filename collision is found
+    """
+    names_by_filename: dict[str, list[str]] = {}
+    for wf in workflows:
+        wf_name = wf.get("name")
+        if not wf_name:
+            continue
+        filename = f"{_sanitize_filename(wf_name)}.json"
+        names_by_filename.setdefault(filename, []).append(wf_name)
+
+    collisions = {
+        filename: names for filename, names in names_by_filename.items() if len(names) > 1
+    }
+    if not collisions:
+        return
+
+    lines = ["Aborting export: multiple workflows resolve to the same filename:"]
+    for filename, names in sorted(collisions.items()):
+        lines.append(f"  {filename}")
+        for name in names:
+            lines.append(f"    - {name!r}")
+    lines.append(
+        "Rename these workflows in n8n so each has a unique name, then re-run export."
+    )
+    logger.critical("\n".join(lines))
+
+
 def _clean_workflows_directory(workflows_dir: Path) -> None:
     """Clean workflows directory by deleting all JSON files.
 
@@ -523,6 +561,9 @@ def run_export(args: argparse.Namespace) -> None:
     # Fetch data
     tags_mapping = _fetch_tags_mapping(client)
     workflows_to_export = _fetch_workflows(client)
+
+    # Fail fast on filename collisions before touching any files on disk
+    _check_filename_collisions(workflows_to_export)
 
     # Log export mode
     logger.info(f"\nExporting {len(workflows_to_export)} workflow(s) (mirror mode)...")

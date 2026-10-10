@@ -1,5 +1,15 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- **Abort export on filename collisions** — if two workflows sanitize to the
+  same export filename (e.g. two workflows sharing a name, including one
+  active and one stale/inactive), export used to silently overwrite one with
+  the other. It now aborts before touching any files and lists the colliding
+  workflow names so they can be renamed in n8n first.
+
 ## [0.4.1] - 2026-06-09
 
 ### Fixed
