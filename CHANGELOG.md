@@ -1,5 +1,14 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- **`list_workflows()` pagination** — export only fetched the first page (100)
+  of workflows from `/api/v1/workflows`, silently dropping the rest on
+  instances with more than 100 workflows. Now follows `nextCursor` the same
+  way `list_tags()` already did.
+
 ## [0.4.1] - 2026-06-09
 
 ### Fixed
