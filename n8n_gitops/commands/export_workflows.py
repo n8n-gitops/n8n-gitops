@@ -9,7 +9,7 @@ from typing import Any
 import yaml
 
 from n8n_gitops import logger
-from n8n_gitops.config import load_auth
+from n8n_gitops.config import load_auth, resolve_skip_archived
 from n8n_gitops.gitref import WorkingTreeSnapshot
 from n8n_gitops.manifest import load_manifest
 from n8n_gitops.n8n_client import N8nClient
@@ -157,6 +157,29 @@ def _fetch_workflows(client: N8nClient) -> list[dict[str, Any]]:
         logger.info("No workflows found to export")
         raise SystemExit(0)
     return remote_workflows
+
+
+def _filter_archived_workflows(
+    workflows: list[dict[str, Any]],
+    skip_archived: bool,
+) -> list[dict[str, Any]]:
+    """Filter out archived workflows if requested.
+
+    Args:
+        workflows: List of workflow summaries
+        skip_archived: Whether to exclude archived workflows
+
+    Returns:
+        Filtered list of workflow summaries
+    """
+    if not skip_archived:
+        return workflows
+
+    filtered = [wf for wf in workflows if not wf.get("isArchived", False)]
+    skipped = len(workflows) - len(filtered)
+    if skipped:
+        logger.info(f"Skipping {skipped} archived workflow(s) (--skip-archived)")
+    return filtered
 
 
 def _clean_workflows_directory(workflows_dir: Path) -> None:
@@ -337,6 +360,7 @@ def _export_single_workflow(
     spec = {
         "name": wf_name,
         "active": workflow.get("active", False),
+        "is_archived": workflow.get("isArchived", False),
         "tags": tag_names,
     }
 
@@ -523,6 +547,10 @@ def run_export(args: argparse.Namespace) -> None:
     # Fetch data
     tags_mapping = _fetch_tags_mapping(client)
     workflows_to_export = _fetch_workflows(client)
+
+    # Exclude archived workflows if requested (--skip-archived or config profile)
+    skip_archived = resolve_skip_archived(repo_root, args)
+    workflows_to_export = _filter_archived_workflows(workflows_to_export, skip_archived)
 
     # Log export mode
     logger.info(f"\nExporting {len(workflows_to_export)} workflow(s) (mirror mode)...")

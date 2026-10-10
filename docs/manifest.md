@@ -26,6 +26,7 @@ externalize_code: true
 workflows:
   - name: "Workflow Name"
     active: true
+    is_archived: false
     tags:
       - tag1
       - tag2
@@ -94,6 +95,18 @@ active: false  # Workflow will be deactivated after deployment
 The deployment process calls the appropriate API endpoint:
 - `active: true` → POST `/api/v1/workflows/{id}/activate`
 - `active: false` → POST `/api/v1/workflows/{id}/deactivate`
+
+#### `is_archived` (optional, default: `false`)
+
+Whether the workflow was archived in n8n at the time it was exported.
+
+```yaml
+is_archived: true
+```
+
+This is a **snapshot, not a control**: `n8n-gitops export` records it so archived state is visible in git without opening n8n, but `deploy` does not read this field — it queries the live archive state from the n8n API directly when deciding whether a workflow needs to be unarchived before updating it. Editing `is_archived` by hand has no effect; it will be overwritten on the next export.
+
+To exclude archived workflows from export entirely instead of just flagging them, see [`--skip-archived`](export.md#skip-archived).
 
 #### `tags` (optional, default: `[]`)
 

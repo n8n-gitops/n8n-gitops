@@ -7,7 +7,12 @@ from tempfile import TemporaryDirectory
 import pytest
 import yaml
 
-from n8n_gitops.config import load_auth, save_config_profile, load_config_profile
+from n8n_gitops.config import (
+    load_auth,
+    load_config_profile,
+    resolve_skip_archived,
+    save_config_profile,
+)
 from n8n_gitops.exceptions import ConfigError
 
 
@@ -157,3 +162,70 @@ class TestLoadAuth:
                     os.environ["N8N_API_URL"] = old_url
                 if old_key:
                     os.environ["N8N_API_KEY"] = old_key
+
+
+class TestResolveSkipArchived:
+    """Test skip_archived resolution priority (CLI flag > config profile > default)."""
+
+    def test_defaults_false(self):
+        """Test that skip_archived defaults to False with no flag or config."""
+
+        class Args:
+            skip_archived = None
+            config = None
+
+        with TemporaryDirectory() as tmpdir:
+            assert resolve_skip_archived(Path(tmpdir), Args()) is False
+
+    def test_no_args(self):
+        """Test that skip_archived defaults to False when args is None."""
+        with TemporaryDirectory() as tmpdir:
+            assert resolve_skip_archived(Path(tmpdir), None) is False
+
+    def test_cli_flag_true(self):
+        """Test that the --skip-archived CLI flag is honored."""
+
+        class Args:
+            skip_archived = True
+            config = None
+
+        with TemporaryDirectory() as tmpdir:
+            assert resolve_skip_archived(Path(tmpdir), Args()) is True
+
+    def test_config_profile_true(self):
+        """Test that skip_archived: true in the config profile is honored."""
+        with TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir)
+            save_config_profile(repo_root, "prod", "https://prod.example.com", "prod-key")
+            config_path = repo_root / ".n8n-gitops.yaml"
+            configs = yaml.safe_load(config_path.read_text())
+            configs["prod"]["skip_archived"] = True
+            config_path.write_text(yaml.dump(configs, default_flow_style=False, sort_keys=False))
+
+            class Args:
+                skip_archived = None
+                config = "prod"
+
+            assert resolve_skip_archived(repo_root, Args()) is True
+
+    def test_cli_flag_overrides_absent_config_setting(self):
+        """Test that the CLI flag wins even when the config profile doesn't set it."""
+        with TemporaryDirectory() as tmpdir:
+            repo_root = Path(tmpdir)
+            save_config_profile(repo_root, "prod", "https://prod.example.com", "prod-key")
+
+            class Args:
+                skip_archived = True
+                config = "prod"
+
+            assert resolve_skip_archived(repo_root, Args()) is True
+
+    def test_missing_config_profile_defaults_false(self):
+        """Test that a missing config profile falls back to False rather than raising."""
+
+        class Args:
+            skip_archived = None
+            config = "does-not-exist"
+
+        with TemporaryDirectory() as tmpdir:
+            assert resolve_skip_archived(Path(tmpdir), Args()) is False

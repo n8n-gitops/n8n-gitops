@@ -67,6 +67,43 @@ workflows:
         assert wf.requires_credentials == ["stripe-api"]
         assert wf.requires_env == ["STRIPE_KEY"]
 
+    def test_is_archived_defaults_false(self):
+        """Test that is_archived defaults to False when omitted."""
+        snapshot = MockSnapshot({
+            "n8n/manifests/workflows.yaml": """
+workflows:
+  - name: "Test Workflow"
+    active: true
+"""
+        })
+        manifest = load_manifest(snapshot)
+        assert manifest.workflows[0].is_archived is False
+
+    def test_is_archived_parsed(self):
+        """Test that is_archived is parsed when present."""
+        snapshot = MockSnapshot({
+            "n8n/manifests/workflows.yaml": """
+workflows:
+  - name: "Archived Workflow"
+    active: false
+    is_archived: true
+"""
+        })
+        manifest = load_manifest(snapshot)
+        assert manifest.workflows[0].is_archived is True
+
+    def test_is_archived_invalid_type_raises(self):
+        """Test that a non-boolean is_archived raises ManifestError."""
+        snapshot = MockSnapshot({
+            "n8n/manifests/workflows.yaml": """
+workflows:
+  - name: "Bad Workflow"
+    is_archived: "yes"
+"""
+        })
+        with pytest.raises(ManifestError, match="'is_archived' must be a boolean"):
+            load_manifest(snapshot)
+
     def test_manifest_missing_workflows_key(self):
         """Test that manifest without 'workflows' key fails."""
         snapshot = MockSnapshot({
